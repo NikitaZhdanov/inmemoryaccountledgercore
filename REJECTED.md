@@ -1,33 +1,24 @@
 # Acceptance-criterion review
 
-All eight criteria assessed: refuse 2, 7, 8; accept 1 and 6 under documented
-human interpretations; accept 3 and 4; accept 5 as a conditional statement
-whose premise does not occur for Auth-B. Unspecified extensions and the missing
-BHD tariff remain explicit in [AMBIGUITIES.md](AMBIGUITIES.md). Assess each
-criterion independently; incorrect ones do not invalidate correct ones.
+All eight supplied claims are assessed independently. Refuse 2, 7, and 8;
+accept 1 and 6 under the documented human interpretations; accept 3 and 4;
+accept 5 conditionally. TASK.md remains unchanged.
 
-| # | Verdict | Reason |
+| # | Verdict | Reason and supporting record |
 | --- | --- | --- |
-| 1 | Correct under human-agreed fee-free interpretation | Input prefix E1–E8 excluding all fee entries gives Day 2: 1,200.00 − 950.00 − 620.00 = AED −370.00. This is not actual posted Day 2 as known at Day 5 closing, AED −395.00. Final restatement after E9 gives AED 250.00. TASK.md is unchanged. |
-| 2 | Incorrect; refuse | E7 triggers Day 2 and Day 4 fees before E8; Day 5 incurs its own fee at closing. Three AED 25.00 assessments total AED 75.00. Corresponding post-fee closes: AED −395.00, −205.00, −230.00. Day 3 closes AED 5.00 with no fee. E9 refunds all three without erasing their assessment history. Exactly one Day 2 fee violates daily assessment for other negative days. |
-| 3 | Correct; final settlement confirmed by human | Accept E5, debit AED 185.00, release Auth-A's full AED 200.00 hold, mark settled. No partial indicator/further captures exist. Unused AED 15.00 becomes available without credit. Later rebuilds do not revoke past authorization decisions. |
-| 4 | Correct; confirmed by human | Explicit rejection conflicts with no non-negotiable rule. Reject E6 without debit because Auth-Z is absent; no force-post exception exists. The earlier draft's unresolved verdict was an error, corrected after human review. |
-| 5 | Correct conditional statement | Approved holds affect available balance only. Auth-B actually declines at E8 and remains declined after E9, so creates no hold in this replay. Test the approved-hold invariant separately. |
-| 6 | Correct under human-agreed financial-restoration interpretation | After E9/corrections and before capitalization, restore historical financial balances, refund unjustified fees, rebuild interest. Linked refunds book Day 6 with original values Days 2, 4, 5; preserve E7/assessments. Corrections idempotent; past authorizations unchanged. This interprets rather than rewrites TASK.md. |
-| 7 | Incorrect; refuse | Three BHD 3.334 amounts total 10.002, exceeding E10 by 0.002. Human-agreed split 3.333, 3.333, 3.334 puts residual last and conserves 10.000. |
-| 8 | Incorrect; refuse | Discarding a remainder directly violates exact reconciliation of rounded daily accruals to capitalization. Capitalize the corrected rounded daily sum. |
+| 1 | Correct under the agreed interpretation | A fee-free prefix calculation is distinct from a posted snapshot; see [observation rationale](AMBIGUITIES.md#a8--observations-and-report-interpretation) and [arithmetic](NUMBERS.md#checkpoint-calculations). |
+| 2 | Incorrect; refuse | Several assessed days are negative. Charging only one day violates the daily-fee rule; see [chronological calculations](NUMBERS.md#checkpoint-calculations). Refunds do not erase assessments. |
+| 3 | Correct | The agreed final-settlement interpretation accepts E5; see [hold decision](AMBIGUITIES.md#a7--hold-lifecycle). |
+| 4 | Correct | Unknown-authorization rejection conflicts with no non-negotiable rule; see [the corrected review](AMBIGUITIES.md#a3--unmatched-settlement). |
+| 5 | Correct conditional statement | The hold invariant is required, although Auth-B's actual decline leaves the premise untriggered; see [authorization behavior](docs/SPEC.md#authorizations-and-settlements). |
+| 6 | Correct under the agreed interpretation | Financial restoration preserves record history and original authorization decisions; see [reversal rationale](AMBIGUITIES.md#a4--backdating-and-reversal). |
+| 7 | Incorrect; refuse | The proposed equal rounded-up credits exceed the supplied total; see [conservation arithmetic](NUMBERS.md#instalment-conservation). |
+| 8 | Incorrect; refuse | Discarding a remainder violates exact reconciliation of rounded daily accruals to capitalization; see [finalization](docs/SPEC.md#day-6-finalization). |
 
-## Abandoned build approaches and discarded specification proposals
+## Abandoned approaches
 
-No build approach was abandoned: implementation has not begun. Do not invent
-build attempts from policy discussions.
-
-The proposal to accept E6 as an unmatched external payment was withdrawn after
-human correction: it lacked support in the task and displaced consistent
-criterion 4. Replaced by rejection without debit. This was a discarded
-specification proposal, not a built implementation.
-
-The identical-payload retry proposal was also declined. The human chose all
-duplicate input IDs to reject for a small, predictable implementation; retries
-are outside the assignment's stated requirements. Internal correction/closing
-idempotence remains required. No retry implementation was built or abandoned.
+No build approach was abandoned: implementation has not begun. Discarded
+specification proposals, rather than invented build attempts, are recorded with
+their replacements and reasons in [A3](AMBIGUITIES.md#a3--unmatched-settlement),
+[A10](AMBIGUITIES.md#a10--duplicate-ids-and-errors), and
+[A11](AMBIGUITIES.md#a11--required-failing-test).
