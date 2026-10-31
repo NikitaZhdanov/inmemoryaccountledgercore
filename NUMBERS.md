@@ -2,7 +2,10 @@
 
 This file owns numerical sources, justifications, calculations, and verification
 parameters. [SPEC](docs/SPEC.md) defines behavior; [AMBIGUITIES](AMBIGUITIES.md)
-explains business choices. No runtime or implementation limits are selected.
+explains business choices. The [Go design](docs/DESIGN.md#language-and-tooling)
+proposes arbitrary-precision integer minor units with no machine-width monetary
+limit or new numerical constant. The toolchain baseline remains to be recorded
+when implementation begins.
 Calculations and verification use exact equality, without numerical tolerance.
 
 ## Constants and sources
