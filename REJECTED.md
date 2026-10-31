@@ -22,3 +22,9 @@ specification proposals, rather than invented build attempts, are recorded with
 their replacements and reasons in [A3](AMBIGUITIES.md#a3--unmatched-settlement),
 [A10](AMBIGUITIES.md#a10--duplicate-ids-and-errors), and
 [A11](AMBIGUITIES.md#a11--required-failing-test).
+
+The initial technical design proposed `math/big.Int` money to avoid a fixed-width
+range. Human review favored simpler `int64` value semantics; the revised
+[design](docs/DESIGN.md#language-and-tooling) replaces that proposal with checked
+integer arithmetic and explicit representation-error handling. This was a design
+revision, not an implemented approach that failed a test.
