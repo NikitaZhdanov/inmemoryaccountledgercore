@@ -5,6 +5,7 @@ Documentation only; the ledger and executable replay/tests have not been built.
 - [Original assignment](docs/TASK.md)
 - [Behavioral specification and output semantics](docs/SPEC.md)
 - [Proposed Go technical design](docs/DESIGN.md)
+- [Use cases and scenario coverage](docs/USE_CASES.md)
 - [Decision rationale and unspecified extensions](AMBIGUITIES.md)
 - [Numerical justifications and expected results](NUMBERS.md)
 - [Acceptance-criterion review](REJECTED.md)
