@@ -34,11 +34,29 @@ tests plus `go test ./...` and `go vet ./...` for each completed code task, and
 review its diff. The separately tagged failing test is excluded from normal
 checks. All completion checks below are future requirements, not reported results.
 
+Follow the [package/import map](DESIGN.md#small-code-layout): `internal/domain`
+owns shared models and money; `internal/ledger` owns business logic and the small
+repository interface; `internal/repository/memory` owns storage; `internal/report`
+owns presentation; `internal/scenario` owns canonical inputs and close sequencing.
+`cmd/replay/main.go` composes them. Ledger and memory depend on domain; report and
+scenario may use ledger and domain. No reverse imports or report/scenario coupling
+are needed. Keep repository signatures in shared domain types so memory need not
+import ledger. Preserve `History()` / `Append(batch)` as the entire repository
+boundary, with no storage-specific queries added to support reporting.
+
+Place unit tests beside each package, using a test-local repository double for
+ledger unit tests. Put tests using multiple real components in the separate
+`tests/replay` external test package, even before the scenario runner exists.
+They compose components through the same boundaries as `main`. Once present,
+run unit tests with `go test ./internal/...` and end-to-end tests with
+`go test ./tests/replay`; `go test ./...` includes both. Review import direction
+as packages are introduced and verify the eventual graph with `go list -deps ./...`.
+
 ## Ordered tasks
 
 ### P01 — Bootstrap Go and exact money representation
 
-- **Scope:** Create the module and root `ledger` package using the standard
+- **Scope:** Create the module and `internal/domain` package using the standard
   library only; record the actual Go toolchain and module baseline. Add currency
   scales, `int64` minor-unit money, exact decimal parsing/formatting, currency
   checks, and checked addition, subtraction, negation, and accumulation. Retain
@@ -55,7 +73,8 @@ checks. All completion checks below are future requirements, not reported result
 
 ### P02 — Exact interest rounding and conserving allocation
 
-- **Scope:** Add pure positive-base daily interest calculation using the exact
+- **Scope:** Introduce `internal/ledger` with pure policy functions using domain
+  money operations. Add positive-base daily interest calculation using the exact
   rate denominator and quotient/remainder HALF_EVEN rounding. Add the integer
   instalment allocation needed by E10, assigning its remainder to the last
   instalment. Keep these calculations independent of ledger state.
@@ -70,8 +89,10 @@ checks. All completion checks below are future requirements, not reported result
 ### P03 — Immutable records and atomic in-memory repository
 
 - **Scope:** Define account, original input, attempt/outcome, monetary entry,
-  authorization transition, and diagnostic records from DESIGN. Implement the
-  small `History()` / `Append(batch)` boundary with ordered detached snapshots,
+  authorization transition, diagnostic, batch, and history records in
+  `internal/domain`. Define the small `History()` / `Append(batch)` interface in
+  `internal/ledger` using domain types and implement it in
+  `internal/repository/memory` with ordered detached snapshots,
   defensive copies, and all-or-nothing record-key validation. Separate internal
   record keys and attempt identities from supplied event IDs; storage owns no
   business policy.
@@ -81,14 +102,16 @@ checks. All completion checks below are future requirements, not reported result
   returned containers cannot change stored records. A conflicting key, including
   one inside a proposed batch, appends none of that batch. Distinct rejected
   attempts can reference an existing event ID without replacing it. Repository
-  tests do not mistake key uniqueness for the eventual duplicate-input policy.
+  unit tests sit beside memory storage and do not mistake key uniqueness for the
+  eventual duplicate-input policy. Ledger imports no memory adapter; memory
+  imports only domain within this module.
 
 ### P04 — Rebuild balances and recorded state from history
 
-- **Scope:** Add checked value-date balance queries over detached history and
-  disposable projections for authorization lifecycle/active holds, fee net
-  effects, unpaid daily accruals, and closed-day tracking. Support explicit
-  observation prefixes and fee exclusions needed by later reconciliation and
+- **Scope:** In `internal/ledger`, add checked value-date balance queries over
+  detached history and disposable projections for authorization lifecycle/active
+  holds, fee net effects, unpaid daily accruals, and closed-day tracking. Support
+  explicit observation prefixes and fee exclusions needed by later reconciliation and
   criterion 1. Rebuild financial state without rerunning authorization decisions.
 - **Dependencies:** P01, P03.
 - **Use cases:** H01, H02, H05, X01, X11 (direct history fixtures).
@@ -100,10 +123,10 @@ checks. All completion checks below are future requirements, not reported result
 
 ### P05 — Ordinary input processing, validation, and duplicate rejection
 
-- **Scope:** Implement submission handling for credits/debits, exact monetary
-  validation, original input retention, unique attempt identities, outcomes,
-  and diagnostics. Reject every reused event ID before any event-triggered
-  effects, regardless of original outcome or payload equality. Compute a batch
+- **Scope:** In `internal/ledger`, implement submission handling for credits/debits,
+  exact monetary validation, original input retention, unique attempt identities,
+  outcomes, and diagnostics. Reject every reused event ID before any
+  event-triggered effects, regardless of original outcome or payload equality. Compute a batch
   completely before append; continue after covered business rejections and
   propagate technical failures.
 - **Dependencies:** P01, P03, P04.
@@ -118,9 +141,10 @@ checks. All completion checks below are future requirements, not reported result
 
 ### P06 — Authorization decisions and final settlement
 
-- **Scope:** Add event-checkpoint availability, approval/decline transitions,
-  active holds, E5 final settlement, full hold release, and E6 unknown-ID
-  rejection. Use posted fees in availability and exclude unpaid interest.
+- **Scope:** In `internal/ledger`, add event-checkpoint availability,
+  approval/decline transitions, active holds, E5 final settlement, full hold
+  release, and E6 unknown-ID rejection. Use posted fees in availability and
+  exclude unpaid interest.
   Do not introduce partial capture, expiry, or inactive-ID settlement policies.
 - **Dependencies:** P04, P05.
 - **Use cases:** H02, H03, U01, U02, U04, X02 (U02 full E7 integration in P09).
@@ -133,10 +157,10 @@ checks. All completion checks below are future requirements, not reported result
 
 ### P07 — Linked reversal and instalment posting
 
-- **Scope:** Add E9's principal reversal linked to E7, retaining the original
-  record and using booking Day 6/value Day 2. Add E10's ordered instalment
-  entries with its original Day 5 dates. Separate recorded-input duplication
-  from idempotent internal posting/correction causes.
+- **Scope:** In `internal/ledger`, add E9's principal reversal linked to E7,
+  retaining the original record and using booking Day 6/value Day 2. Add E10's
+  ordered instalment entries with its original Day 5 dates. Separate
+  recorded-input duplication from idempotent internal posting/correction causes.
 - **Dependencies:** P02, P05.
 - **Use cases:** H05, H06, U04, X06 (posting layer; refunds/accrual restoration
   follow in P08/P09).
@@ -148,10 +172,10 @@ checks. All completion checks below are future requirements, not reported result
 
 ### P08 — Daily fee reconciliation and unpaid accruals
 
-- **Scope:** Implement explicit close/reconciliation for Days 1–5, using
-  chronological closed-day processing. Exclude each day's own net fee only
-  from eligibility; carry earlier net fees into later days. Compare required
-  and recorded net charges under one account/day obligation and append linked
+- **Scope:** In `internal/ledger`, implement explicit close/reconciliation for
+  Days 1–5, using chronological closed-day processing. Exclude each day's own
+  net fee only from eligibility; carry earlier net fees into later days. Compare
+  required and recorded net charges under one account/day obligation and append linked
   assessments, refunds, or renewed adjustments. Replace derived post-fee daily
   accruals; never post daily accrual ledger entries. Add the missing-BHD-policy
   diagnostic keyed by account/day/cause with unchanged-repeat suppression.
@@ -166,15 +190,17 @@ checks. All completion checks below are future requirements, not reported result
 
 ### P09 — Integrate backdated changes with closed-day processing
 
-- **Scope:** Connect financial submissions to affected closed-day reconciliation
-  and explicit close calls. Reconcile E7's Days 2–4 before returning control for
-  E8; close Day 5 only after E8. Process E9's principal correction and Days 2–5
-  refunds/accrual rebuild before E10; E10 then corrects BHD Day 5. Preserve all
+- **Scope:** In `internal/ledger`, connect financial submissions to affected
+  closed-day reconciliation and explicit close calls. Reconcile E7's Days 2–4
+  before returning control for E8; close Day 5 only after E8. Process E9's
+  principal correction and Days 2–5 refunds/accrual rebuild before E10; E10 then
+  corrects BHD Day 5. Preserve all
   original outcomes and distinguish per-batch atomicity from whole-operation
   rollback, which DESIGN does not promise.
 - **Dependencies:** P06, P07, P08.
 - **Use cases:** H04, H05, H06, U02, U04, U07, X01, X05, X06, X09, X11.
-- **Completion checks:** Direct checkpoint integration tests show Day 2 balances
+- **Completion checks:** Direct checkpoint integration tests in `tests/replay`,
+  composing ledger with real memory storage, show Day 2 balances
   AED −370.00 fee-free, −395.00 posted at Day 5 close, and 250.00 after
   restoration. E8's proposed availability is AED −295.00 and Auth-B stays
   declined after E9. Fee assessments for Days 2, 4, 5 are booked Day 5; linked
@@ -185,9 +211,9 @@ checks. All completion checks below are future requirements, not reported result
 
 ### P10 — Consistent Day 6 finalization
 
-- **Scope:** Implement the SPEC Day 6 equations after historical corrections.
-  Determine fee, rounded accrual, and exact capitalization before posting;
-  include capitalization in fee eligibility and exclude it from its own interest
+- **Scope:** In `internal/ledger`, implement the SPEC Day 6 equations after
+  historical corrections. Determine fee, rounded accrual, and exact capitalization
+  before posting; include capitalization in fee eligibility and exclude it from its own interest
   base. Use the direct branch in DESIGN, with no provisional fee or iterative
   solver. Capitalization identity is per account/window.
 - **Dependencies:** P08, P09.
@@ -201,9 +227,12 @@ checks. All completion checks below are future requirements, not reported result
 
 ### P11 — Canonical scenario runner and end-to-end regression
 
-- **Scope:** Add `internal/scenario` with literal canonical inputs and explicit
-  close checkpoints, plus a fresh-repository runner. Preserve E1–E10 source
-  order, including E10 after E9; never infer closing from booking-date changes.
+- **Scope:** Add `internal/scenario` with literal domain inputs and explicit
+  close checkpoints; its runner receives an already constructed ledger core.
+  Put scenario unit tests beside the package and complete replay tests in
+  `tests/replay`, which constructs fresh memory/ledger components. Preserve
+  E1–E10 source order, including E10 after E9; never infer closing from
+  booking-date changes.
   Integrate all prior layers with checkpoint assertions before the printed report.
 - **Dependencies:** P09, P10.
 - **Use cases:** H01–H07, U01, U02, U04, X01, X06, X09, X11.
@@ -213,12 +242,16 @@ checks. All completion checks below are future requirements, not reported result
   respectively, and Day 6 after E10/corrections. Assert every final daily balance
   and accrual, retained fee/refund history, and checkpoint outcomes from NUMBERS.
   Fresh runs yield identical history/state; resubmitting to a populated repository
-  rejects duplicates without changing financial or hold state.
+  rejects duplicates without changing financial or hold state. Scenario imports
+  neither memory storage nor report and constructs no hidden dependencies.
 
 ### P12 — Deterministic report and executable replay
 
-- **Scope:** Add pure report projection/formatting and `cmd/replay` to construct
-  a fresh repository, run the scenario, and print the agreed final daily table.
+- **Scope:** Add pure projection/formatting in `internal/report`, with unit tests
+  beside the package. In `cmd/replay/main.go`, construct a fresh memory repository,
+  inject it into ledger, invoke scenario with that core, pass detached history
+  and read-only projections to report, and print the agreed final daily table.
+  Extend `tests/replay` with end-to-end report assertions.
   Include every day/account, closing ledger balance, linked fee history with
   booking/value days, recorded authorization states, and errors/decision reasons.
   Publish the now-runnable replay command and output interpretation in README.
@@ -230,7 +263,9 @@ checks. All completion checks below are future requirements, not reported result
   distinguish restated finances from recorded decisions. Auth-A is active
   Days 2–3 and settled from Day 4; Auth-B is declined from Day 5. E6/E8 reasons
   appear only on Days 4/5. Group charges/refunds by assessed day even though net
-  final fees are zero. No extra original-snapshot table is printed.
+  final fees are zero. No extra original-snapshot table is printed. `main` owns
+  composition; report does not mutate ledger state or construct dependencies.
+  `go list -deps ./...` succeeds and its import graph matches DESIGN without cycles.
 
 ### P13 — Investigate and preserve a genuine failing design test
 
@@ -238,8 +273,10 @@ checks. All completion checks below are future requirements, not reported result
   the [USE_CASES candidates](USE_CASES.md#design-test-candidates) as investigation
   leads only. Select a useful property, explain the actual trade-off and evidence
   in AMBIGUITIES A11, and add a real test with an inline explanation under the
-  `designlimitation` build tag. Document its exact isolated command and why it
-  satisfies the assignment. Record any actually abandoned investigation honestly.
+  `designlimitation` build tag beside the affected package, or in `tests/replay`
+  if it exposes a cross-component limitation. Document its exact isolated command
+  and why it satisfies the assignment. Record any actually abandoned investigation
+  honestly.
 - **Dependencies:** P11, P12; actual implementation evidence is required.
 - **Use cases:** No preselected failing scenario. U07, X06, X10, X11 may inform
   investigation; their specified regression expectations must still pass.
@@ -262,7 +299,10 @@ checks. All completion checks below are future requirements, not reported result
 - **Dependencies:** P01–P13, including the observed genuine failure.
 - **Use cases:** H01–H08, U01–U07, X01–X11; separate P13 design-test evidence.
 - **Completion checks:** Run `go test ./...`, `go vet ./...`, and
-  `go run ./cmd/replay`; check formatting. Run
+  `go run ./cmd/replay`; check formatting and `go list -deps ./...` for the
+  specified acyclic package graph. Confirm unit tests are beside each package
+  and end-to-end tests are separate in `tests/replay`; document their respective
+  `go test ./internal/...` and `go test ./tests/replay` commands. Run
   `go test -tags designlimitation ./...` separately and report its real nonzero
   outcome. README gives actual runtime/dependencies, exact setup/run commands,
   report interpretation, and the isolated failing-test command. Check local

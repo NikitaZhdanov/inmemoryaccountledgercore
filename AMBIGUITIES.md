@@ -33,6 +33,16 @@ read/append boundary; exact API spelling and the actual toolchain baseline can
 be finalized during implementation. These are technical choices, not new business
 interpretations or claims of human approval of the entire proposal.
 
+The human subsequently chose separate `internal/domain`, `internal/ledger`,
+`internal/repository/memory`, `internal/report`, and `internal/scenario` packages
+with wiring in `cmd/replay/main.go`, replacing the root-package layout proposal.
+The separation makes ownership and import direction explicit while preserving
+the small repository boundary. The [package/import map](docs/DESIGN.md#small-code-layout)
+keeps shared types below ledger and storage to avoid cycles. Unit tests stay
+beside each package; end-to-end composition tests live separately in
+`tests/replay`. Verify import direction and test placement during implementation;
+this is a structural decision, with no change to business behavior.
+
 ## A3 — Unmatched settlement
 
 Criterion 4 already supplies a consistent rule. The earlier proposal to accept
