@@ -8,23 +8,33 @@ mechanisms without changing agreed decisions, numerical oracles, or
 
 ## Language and tooling
 
-Use Go, a Go module, and the standard library only: `math/big` for exact integer
-arithmetic, `testing` for tests, and `fmt`/`strings` for the text report. Use
+Use Go, a Go module, and the standard library only: `strconv` for integer parsing,
+`testing` for tests, and `fmt`/`strings` for the text report. Use
 `gofmt`, `go test`, and `go vet`; record the actual Go version and module baseline
 when implementation begins. No services, dependency framework, or storage setup.
 
-Store money as signed integer minor units paired with currency. Wrap `big.Int`
-behind a small money type with private fields; copy on construction and access,
-and return new values from arithmetic. This avoids both floating point and an
-arbitrary machine-width monetary limit, at the cost of careful copying. Cross-
-currency arithmetic is invalid; there is no conversion facility.
+Store money as `int64` minor units paired with currency, in a small value type.
+The human preferred this simpler representation over the initial `big.Int`
+proposal. Its range comfortably covers this workload and copying money needs no
+reference ownership rules. Cross-currency arithmetic is invalid; there is no
+conversion facility.
+
+Check parsing, scaling, addition, subtraction, negation, and accumulation for
+overflow before using their results. Out-of-range input retains its diagnostic
+and is rejected without financial effects; derived arithmetic overflow stops
+replay as a technical error rather than silently wrapping or becoming a business
+decline. Compute each batch fully before appending it. This is an explicit
+representation limit, not a business balance cap; see the
+[bounds and checks](../NUMBERS.md#int64-representation).
 
 Parse decimal amount text exactly into minor units, rejecting a nonzero excess
 fraction and accepting redundant trailing zeros. Preserve the original text in
 the input. For interest, divide positive minor units by the exact rate denominator
 from [NUMBERS.md](../NUMBERS.md#constants-and-sources); use quotient/remainder
 comparison to implement HALF_EVEN, including an even-quotient tie check. Format
-money directly from integers at the currency's scale. No decimal context,
+money directly from integers at the currency's scale, including the minimum
+signed value without negating it. Division by the rate denominator avoids a
+potentially overflowing balance-times-rate intermediate. No decimal context,
 tolerance, or intermediate floating point is needed.
 
 ## Small code layout
@@ -54,7 +64,7 @@ little to this in-memory workload.
 
 History is authoritative. Mutable maps are disposable projections; rebuilding
 financial projections never reevaluates authorization decisions. Go structs are
-not inherently immutable: keep stored slices/maps/big integers private and expose
+not inherently immutable: keep stored slices/maps private and expose
 defensive copies so callers cannot alter recorded history.
 
 ## Repository boundary
@@ -140,7 +150,9 @@ Use table-driven tests with exact expectations independently derived in
 closing functions. Cover:
 
 - Money representability, both HALF_EVEN tie directions/currencies, exact
-  formatting, and conserving instalments with the final residual.
+  formatting, and conserving instalments with the final residual. Exercise
+  integer bounds and checked arithmetic, including minimum-value negation and
+  formatting, overflowing accumulation, and maximum-base interest calculation.
 - Checkpoint arithmetic, full settlement/hold release, approval at the inclusive
   availability boundary, unknown-authorization rejection and continuation, and
   preserved decisions after restatement.

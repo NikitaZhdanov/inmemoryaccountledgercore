@@ -19,11 +19,15 @@ infrastructure. The human chose the small repository with an in-memory implement
 to keep this workload simple. See [scope and storage](docs/SPEC.md#scope-and-storage)
 for the boundary exercised by future tests.
 
-For the technical design, the human selected Go. The
-[proposal](docs/DESIGN.md#language-and-tooling) uses standard-library tooling and
-integer minor units wrapped around `math/big.Int`, rather than floating point or
-fixed-width amounts requiring an additional overflow policy. Defensive-copy
-tests will protect stored history from Go's mutable reference-bearing values.
+For the technical design, the human selected Go and then preferred `int64` minor
+units over the initial `math/big.Int` proposal to avoid unnecessary complexity.
+The [revised proposal](docs/DESIGN.md#language-and-tooling) uses standard-library
+tooling and value-type money with checked arithmetic. The technical resolution
+is to reject unrepresentable input and surface derived overflow as a technical
+failure, never silently wrap it or treat it as a business decline. This adds an
+explicit representation limit without changing the supplied scenario's results;
+see [bounds and verification](NUMBERS.md#int64-representation). Defensive-copy
+tests still protect stored history's slices/maps.
 The [repository proposal](docs/DESIGN.md#repository-boundary) keeps the small
 read/append boundary; exact API spelling and the actual toolchain baseline can
 be finalized during implementation. These are technical choices, not new business

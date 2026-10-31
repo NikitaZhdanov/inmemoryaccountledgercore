@@ -3,9 +3,8 @@
 This file owns numerical sources, justifications, calculations, and verification
 parameters. [SPEC](docs/SPEC.md) defines behavior; [AMBIGUITIES](AMBIGUITIES.md)
 explains business choices. The [Go design](docs/DESIGN.md#language-and-tooling)
-proposes arbitrary-precision integer minor units with no machine-width monetary
-limit or new numerical constant. The toolchain baseline remains to be recorded
-when implementation begins.
+uses checked `int64` minor units with the representation bounds below. The
+toolchain baseline remains to be recorded when implementation begins.
 Calculations and verification use exact equality, without numerical tolerance.
 
 ## Constants and sources
@@ -25,6 +24,27 @@ Calculations and verification use exact equality, without numerical tolerance.
 | Zero | TASK.md inclusive authorization boundary and nonpositive-interest threshold | Zero is its own half. |
 | Three instalments | TASK.md E10 count | A fractional count is meaningless; changing the count alters the event. |
 | HALF_EVEN | Human-selected daily rounding convention; [A6](AMBIGUITIES.md#a6--interest-rounding-representation-and-finalization) | Discrete mode; no meaningful half. Exact midpoint is half a minor unit by definition. |
+
+### int64 representation
+
+This is a technical choice following the human's preference, not a task-mandated
+business limit. Signed 64-bit minor units range from −2^63 to 2^63 − 1 inclusive
+(−9,223,372,036,854,775,808 through 9,223,372,036,854,775,807 minor units).
+The width and endpoints follow Go's `int64` type; the exponent accounts for the
+sign bit. Halving the width to 32 bits unnecessarily reduces headroom; halving
+the endpoints introduces an arbitrary cap unrelated to the selected type.
+Major-unit bounds are these endpoints divided by the currency's minor-unit
+factor. No additional monetary cap or tolerance is selected.
+
+Input parsing/scaling and every intermediate sum, difference, or negation must
+fit this range. Reject out-of-range inputs; derived overflow is a technical
+failure, not an authorization or fee-policy decision. Do not clamp or wrap.
+Boundary verification uses the exact endpoints, one minor unit outside each,
+addition/subtraction crossing a bound, negating the minimum, and formatting both
+endpoints. These are derived adjacent-boundary cases; half no longer tests the
+limit. Maximum-positive-base interest must also calculate safely and exactly.
+Divide minor units by the existing rate denominator and round the quotient from
+its remainder, without first multiplying the balance by a rate numerator/scale.
 
 ### Event inventory
 
