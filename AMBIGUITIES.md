@@ -16,9 +16,18 @@ correction. Verify order/record preservation under [history and replay](docs/SPE
 
 Alternatives were combined storage/business logic, a small repository, or general
 infrastructure. The human chose the small repository with an in-memory implementation
-to keep this workload simple. Exact method names and runtime/dependency choices
-remain implementation decisions. See [scope and storage](docs/SPEC.md#scope-and-storage)
+to keep this workload simple. See [scope and storage](docs/SPEC.md#scope-and-storage)
 for the boundary exercised by future tests.
+
+For the technical design, the human selected Go. The
+[proposal](docs/DESIGN.md#language-and-tooling) uses standard-library tooling and
+integer minor units wrapped around `math/big.Int`, rather than floating point or
+fixed-width amounts requiring an additional overflow policy. Defensive-copy
+tests will protect stored history from Go's mutable reference-bearing values.
+The [repository proposal](docs/DESIGN.md#repository-boundary) keeps the small
+read/append boundary; exact API spelling and the actual toolchain baseline can
+be finalized during implementation. These are technical choices, not new business
+interpretations or claims of human approval of the entire proposal.
 
 ## A3 — Unmatched settlement
 
