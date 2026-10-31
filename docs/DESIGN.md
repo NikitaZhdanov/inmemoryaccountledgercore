@@ -39,16 +39,36 @@ tolerance, or intermediate floating point is needed.
 
 ## Small code layout
 
-| Location | Responsibility |
-| --- | --- |
-| Root package `ledger` | Money, domain records, repository interface/in-memory implementation, processing, closing, report projection/formatting; split into files by responsibility. |
-| `internal/scenario` | Literal canonical inputs and explicit close checkpoints from SPEC; used by replay and integration tests. |
-| `cmd/replay` | Construct a fresh repository, run the supplied scenario, print the final report. |
-| Tests beside their packages | Unit and integration tests; a build-tagged file isolates the required genuine failing test when selected. |
+The human selected separate internal packages with composition in `main`.
+The table lists allowed production imports within this module; standard-library
+imports are omitted.
 
-Keep these as ordinary functions and small structs. Separate packages for every
-domain concept, a generic event bus, and dependency injection tooling would add
-little to this in-memory workload.
+| Location | Responsibility | Allowed internal imports |
+| --- | --- | --- |
+| `internal/domain` | Models shared across boundaries, currency and money, exact parsing/formatting, and checked monetary arithmetic. | None. |
+| `internal/ledger` | Business logic: input decisions, balance/state projections, interest/allocation policy, reconciliation, closing, and the repository interface. | `domain` |
+| `internal/repository/memory` | Append-only in-memory storage, detached history, record-key validation, and atomic batches. | `domain` |
+| `internal/report` | Pure report projection and text formatting from detached history and read-only ledger projections/queries. | `domain`, `ledger` |
+| `internal/scenario` | Literal canonical inputs and explicit close checkpoints from SPEC; submit/close orchestration against an injected ledger core. | `domain`, `ledger` |
+| `cmd/replay` | `main` constructs memory storage, injects it into the ledger, runs the scenario, supplies finalized data to the report, and prints output. | `domain`, `ledger`, `repository/memory`, `report`, `scenario` as needed. |
+| `tests/replay` | Separate end-to-end test package composing real components and checking checkpoints, complete replay, and final report. | The internal packages needed by each test; no production package imports tests. |
+
+Imports point toward `domain`; no internal package imports `cmd/replay`.
+`ledger` never imports its memory adapter, scenario, or report. Memory storage
+implements the ledger-owned interface structurally through shared domain types
+without importing `ledger`; composition checks conformance. Scenario creates no
+repository and neither builds nor prints reports. Report creates no ledger or
+repository and does not run scenarios or change financial state. This direction
+keeps the graph acyclic without a service locator or dependency injection tooling.
+Keep each package as ordinary functions and small structs.
+
+Put unit tests beside the package they exercise (`*_test.go`); ledger unit tests
+can use a small test-local repository double. Keep tests composing ledger and
+real storage, including replay/report integration, in `tests/replay` with an
+external test package. They wire their own fresh components through the same
+boundaries as `main`, rather than importing the executable. When selected, the
+genuine failing test belongs beside its package for a local limitation or in
+`tests/replay` for a cross-component limitation, isolated by its build tag.
 
 ## Domain records and projections
 
@@ -62,6 +82,8 @@ little to this in-memory workload.
 | Diagnostic | Domain reason, account, observation day, input/correction cause, and assessed day where applicable. Decline reasons remain tied to their outcome. |
 | Rebuildable state | Balances, active holds/current authorization lookup, fee net effects, rounded unpaid accrual per account/day, and closed-day tracking. |
 
+Shared history records, batches, and snapshot types live in `domain`; disposable
+business projections live in `ledger`, and presentation rows belong to `report`.
 History is authoritative. Mutable maps are disposable projections; rebuilding
 financial projections never reevaluates authorization decisions. Go structs are
 not inherently immutable: keep stored slices/maps private and expose
@@ -69,9 +91,11 @@ defensive copies so callers cannot alter recorded history.
 
 ## Repository boundary
 
-Use a single small interface with `History()` and `Append(batch)` operations.
-History returns an ordered, detached snapshot; append validates record-key
-uniqueness before adding the entire batch. The in-memory implementation uses an
+Define a single small interface in `internal/ledger` with `History()` and
+`Append(batch)` operations, using `domain` types for both signatures. Inject the
+implementation into the ledger core in `main`; keep construction out of business
+logic. History returns an ordered, detached snapshot; append validates record-key
+uniqueness before adding the entire batch. `internal/repository/memory` uses an
 append-only slice plus a record-key index. It knows no fee, interest, or approval
 rules. Scanning history is sufficient for this workload; avoid query interfaces
 and persisted aggregates.
@@ -93,9 +117,12 @@ repository uniqueness is a final structural guard, not the business policy.
 
 ## Processing and reconciliation
 
-The scenario runner submits E1–E10 exactly as supplied and invokes the explicit
-[close checkpoints](SPEC.md#history-and-replay). Never infer closing from a
-booking-date change: E10 arrives after E9 while retaining its earlier dates.
+`internal/ledger` owns the processing and reconciliation rules below, including
+daily interest and instalment policy built on `domain` money operations.
+The runner in `internal/scenario` uses the injected core to submit E1–E10 exactly
+as supplied and invokes the explicit [close checkpoints](SPEC.md#history-and-replay).
+Never infer closing from a booking-date change: E10 arrives after E9 while
+retaining its earlier dates.
 
 For each input, check duplicate identity, validate exact amounts, and compute
 its outcome. Credits/debits append monetary entries. Authorization uses the
@@ -130,10 +157,12 @@ must append nothing. No iterative solver or provisional fee is necessary.
 
 ## Reporting
 
-Build a pure report projection after finalization, labeled **restated after the
-entire event stream E1–E10 and Day 6 finalization**. Iterate days and accounts in
-supplied order. Use all final monetary records with value day through the row's
-day; show fee charges/refunds grouped by assessed day, including source links and
+In `internal/report`, build a pure report projection after finalization from
+data supplied by `main`, reusing read-only ledger queries where needed. Label it
+**restated after the entire event stream E1–E10 and Day 6 finalization**.
+Iterate days and accounts in supplied order. Use all final monetary records with
+value day through the row's day; show fee charges/refunds grouped by assessed
+day, including source links and
 booking/value days. Reconstruct recorded authorization lifecycle through each
 row's booking day. Place errors and decision reasons on their original observation
 day, without inventing later occurrences. Format at the account currency's scale.
@@ -163,8 +192,10 @@ closing functions. Cover:
 - All final daily balances/accruals, fee history, Day 6 boundaries, capitalization
   equality, deterministic report placement, and identical fresh-repository replay.
 
-Planned commands once built: `go run ./cmd/replay`, `go test ./...`,
-`go vet ./...`, and separately `go test -tags designlimitation ./...`.
+Planned commands once built: `go run ./cmd/replay`, `go test ./...`, and
+`go vet ./...`. Unit tests can run with `go test ./internal/...`; separate
+end-to-end tests run with `go test ./tests/replay`. Run the genuine failing test
+separately with `go test -tags designlimitation ./...`.
 The tagged test must expose an evidenced limitation of the implemented design,
 include its inline explanation, and genuinely fail. Its assertion remains deferred
 under [A11](../AMBIGUITIES.md#a11--required-failing-test); do not manufacture an
