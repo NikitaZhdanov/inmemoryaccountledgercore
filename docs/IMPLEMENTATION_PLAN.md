@@ -1,7 +1,7 @@
 # Implementation plan
 
-Status: P01 implemented; P02–P14 remain planned. Money unit tests exist;
-ledger replay and the required failing design test remain pending.
+Status: P01–P02 implemented; P03–P14 remain planned. Money and calculation unit
+tests exist; ledger replay and the required failing design test remain pending.
 
 [TASK](TASK.md) preserves the assignment; [SPEC](SPEC.md) defines agreed behavior;
 [DESIGN](DESIGN.md) proposes its Go implementation; [USE_CASES](USE_CASES.md)
@@ -77,6 +77,11 @@ compose real components before the scenario runner exists.
 
 ### P02 — Exact interest rounding and conserving allocation
 
+- **Status:** Implemented as pure functions in
+  [`internal/ledger`](../internal/ledger/calculations.go), with adjacent
+  [unit tests](../internal/ledger/calculations_test.go), using shared
+  [domain rounding](../internal/domain/rounding.go). Posting, accrual state,
+  and capitalization remain in their scheduled tasks.
 - **Scope:** Introduce `internal/ledger` with pure policy functions using domain
   money operations. Add positive-base daily interest calculation using the exact
   rate denominator and quotient/remainder HALF_EVEN rounding. Add the integer
