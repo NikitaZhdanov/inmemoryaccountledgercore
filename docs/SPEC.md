@@ -1,9 +1,9 @@
 # Ledger specification
 
 Status: business behavior resolved for the supplied replay and covered validation
-cases. P01 money primitives, P02 pure interest/allocation calculations, and P03
-append-only storage are implemented; ledger processing and replay remain pending
-later plan tasks.
+cases. P01 money primitives, P02 pure interest/allocation calculations, P03
+append-only storage, and P04 history projections are implemented; ledger
+processing and replay remain pending later plan tasks.
 
 [TASK.md](TASK.md) preserves the original assignment and canonical input stream.
 This file defines behavior; [AMBIGUITIES.md](../AMBIGUITIES.md) records decision
@@ -226,8 +226,9 @@ implementation, when it can expose a genuine design limitation; no assertion or
 expected result is preselected. Explain what it reveals inline, preserve its
 failure, isolate it from the passing normal suite, document its exact command,
 and record its observed nonzero result. Money and calculation unit tests exist
-under P01–P02 and repository unit tests under P03; ledger processing/replay tests
-and the required failing test remain pending. README links
+under P01–P02, repository unit tests under P03, and direct history-projection
+tests under P04; ledger processing/replay tests and the required failing test
+remain pending. README links
 to [DEVELOPMENT](DEVELOPMENT.md) for runtime/dependency details and test commands;
 add replay instructions when built.
 Preserve intact commit history without squashing.

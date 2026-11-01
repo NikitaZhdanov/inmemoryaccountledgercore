@@ -35,7 +35,7 @@ go test ./...
 go vet ./...
 ```
 
-The focused commands run money, pure calculation, and repository unit tests;
+The focused commands run money, calculation/projection, and repository unit tests;
 `go test ./...` runs all implemented tests. Success prints `ok`; vet is silent on success. A failing
 assertion or check returns a nonzero exit status. The money tests use literal
 expected values for configurable precision, trailing zeros, signed endpoints,
@@ -45,6 +45,10 @@ instalment conservation using the [numerical inventory](../NUMBERS.md).
 Repository tests cover ordered snapshots, detached containers and payloads,
 atomic key/envelope validation, and retained attempts sharing an event ID.
 They do not execute the later duplicate-input or other ledger policies.
+Projection tests use literal history records to check observation prefixes,
+value-date balances, fee exclusions/nets, retained authorization decisions and
+holds, corrected accruals, capitalization exclusion, detached state, and derived
+overflow. Submission and reconciliation integration remain in later plan tasks.
 
 For the full local checks, using a current Go toolchain:
 

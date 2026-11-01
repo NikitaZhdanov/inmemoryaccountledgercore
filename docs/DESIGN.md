@@ -56,6 +56,17 @@ detaches their pointers. Adding mutable payload fields requires extending that
 copy operation. Batch and history containers retain a single total record order
 across payload types. API fields and link semantics are documented in code.
 
+## History projections
+
+[Ledger projections](../internal/ledger/projection.go) own a cloned record prefix
+and private derived indexes. Balance scans retain append order while selecting
+by value date; authorization indexes retain recorded transitions. Closed-day
+accruals are recalculated from posted balances rather than persisted as entries.
+Rebuilding returns no partial projection on arithmetic failure; individual
+balance/availability queries also propagate checked arithmetic errors. Projection
+APIs and exclusion options are documented in code. Projections have no repository
+dependency and cannot append records; submission and reconciliation own appends.
+
 ## Money representation
 
 Money pairs signed `int64` minor units with an immutable currency descriptor.

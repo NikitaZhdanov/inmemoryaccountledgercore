@@ -6,6 +6,12 @@ expectations come from [SPEC](SPEC.md); technical checks follow the proposed
 [TASK](TASK.md) remains the canonical input. Scenario IDs are labels, not new
 constants; amounts and boundary fixtures use [NUMBERS](../NUMBERS.md).
 
+P04 [projection tests](../internal/ledger/projection_test.go) cover H01, H02,
+H05, X01, and X11 with direct recorded-history fixtures, including overflow,
+corrected unpaid accruals, and preserved authorization outcomes. They do not
+execute input processing or reconciliation; those integration checks remain
+scheduled in [the implementation plan](IMPLEMENTATION_PLAN.md).
+
 Each scenario is independent unless its preconditions name a replay checkpoint.
 Validation fixtures supplement, rather than modify, E1–E10. Expected rejection,
 decline, initialization error, or technical failure is a **passing regression test**

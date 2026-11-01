@@ -1,8 +1,8 @@
 # Implementation plan
 
-Status: P01–P03 implemented; P04–P14 remain planned. Money, calculation, and
-repository unit tests exist; ledger replay and the required failing design test
-remain pending.
+Status: P01–P04 implemented; P05–P14 remain planned. Money, calculation,
+repository, and history-projection unit tests exist; ledger replay and the
+required failing design test remain pending.
 
 [TASK](TASK.md) preserves the assignment; [SPEC](SPEC.md) defines agreed behavior;
 [DESIGN](DESIGN.md) proposes its Go implementation; [USE_CASES](USE_CASES.md)
@@ -127,6 +127,13 @@ compose real components before the scenario runner exists.
 
 ### P04 — Rebuild balances and recorded state from history
 
+- **Status:** Implemented in [ledger projections](../internal/ledger/projection.go)
+  with adjacent [direct-fixture tests](../internal/ledger/projection_test.go).
+  Explicit record prefixes, checked value-date balances and fee exclusions,
+  recorded authorization state/holds, signed fee nets, closed days, and derived
+  daily/unpaid accruals are covered. Rebuilds own their history and preserve
+  original decisions. Submission/append integration and chronological fee
+  reconciliation remain in P05–P09; these tests do not execute the replay.
 - **Scope:** In `internal/ledger`, add checked value-date balance queries over
   detached history and disposable projections for authorization lifecycle/active
   holds, fee net effects, unpaid daily accruals, and closed-day tracking. Support
