@@ -168,10 +168,11 @@ linked refunds of unjustified fees booked Day 6 with the original fees' value
 dates Days 2, 4, 5. Preserve E7 and original assessments. Rebuild affected daily
 accruals; principal/refund corrections and projections are idempotent.
 
-Criterion 6 means restoration of E7's financial effects after E9/corrections,
-before capitalization. Compare corresponding historical balances and accruals
-without E7's financial effects while retaining other events. It does not reset
-replay state or change past authorizations. The original criterion is not rewritten.
+The supported interpretation of criterion 6 is restoration of E7's financial
+effects after E9/corrections, before capitalization. Compare corresponding
+historical balances and accruals without E7's financial effects while retaining
+other events. A literal reset of record history or past authorizations is refused
+in [REJECTED](../REJECTED.md). The original criterion is not rewritten.
 
 ## Day 6 finalization
 
@@ -195,7 +196,7 @@ interest for Days 1–5, F the Day 6 fee, I its accrual, and K its capitalizatio
 
 An explicit no-fee policy makes F zero, including for negative BHD eligibility.
 Missing policies have already rejected initialization. Consistency and
-boundary calculations are in [NUMBERS.md](../NUMBERS.md#day-6-boundaries).
+boundary checks are in [USE_CASES](USE_CASES.md#x08--day-6-capitalization-crosses-the-fee-boundary).
 
 ## Instalments
 

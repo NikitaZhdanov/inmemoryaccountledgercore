@@ -28,8 +28,8 @@ func canonicalCurrencies(t *testing.T) []domain.Currency {
 	return []domain.Currency{aed, bhd}
 }
 
-// NUMBERS.md tabulates exact quotient/remainder oracles in minor units, which
-// apply at either currency scale. The expectations do not call policy code.
+// Literal quotient/remainder expectations in minor units apply at either
+// currency scale. The expectations do not call policy code.
 func TestDailyInterest(t *testing.T) {
 	for _, currency := range canonicalCurrencies(t) {
 		for _, tc := range []struct {

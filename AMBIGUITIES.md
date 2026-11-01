@@ -1,81 +1,110 @@
 # Task ambiguities and resolutions
 
-This record owns alternatives, resolutions, and rationale for task ambiguities.
-Explicit task requirements remain closed. [TASK](docs/TASK.md) owns the assignment,
-[SPEC](docs/SPEC.md) behavior, [DESIGN](docs/DESIGN.md) architecture choices,
-[NUMBERS](NUMBERS.md) numerical evidence, and
-[DEVELOPMENT](docs/DEVELOPMENT.md) tooling and test conventions.
+This record distinguishes task requirements, resolved interpretations, and
+assumptions. No question blocks the supplied replay; extensions remain
+[deferred](docs/SPEC.md#verification-and-deferred-work). [SPEC](docs/SPEC.md) owns
+behavior, [DESIGN](docs/DESIGN.md) implementation choices, and
+[NUMBERS](NUMBERS.md) calculations. Decision IDs are retained for existing links.
 
 ## A1 — Replay order and projections
 
-**Task requirement, closed.** Supplied order takes precedence over booking- or value-date sorting because TASK explicitly orders the stream. See [replay](docs/SPEC.md#history-and-replay).
+**Explicit requirement, closed.** Replay E1–E10 in supplied order, including E10
+after E9. Sorting by booking or value date would change the input stream. See
+[replay](docs/SPEC.md#history-and-replay).
 
 ## A2 — Unmatched settlement
 
-**Task requirement, closed.** Reject rather than force-post the unmatched settlement: criterion 4 requires rejection and TASK supplies no force-post indicator. The behavior is defined in [SPEC](docs/SPEC.md#authorizations-and-settlements).
+**Resolved policy.** Require a recorded approval before settlement. Reject E6
+without a debit because Auth-Z is absent. Force-posting was considered; the task
+provides no force-post indicator or separate clearing rule. Criterion 4 is
+accepted under this policy; the availability rule alone does not establish it.
+See [settlements](docs/SPEC.md#authorizations-and-settlements).
 
 ## A3 — Backdating and reversal
 
-**Task ambiguities.** Reconcile closed days immediately rather than defer correction, so subsequent inputs see corrected history without closing the open day early. Restore affected financial effects, including unjustified fees, rather than reverse principal alone or retain those fees. Interpret criterion 6 as financial restoration rather than a replay-state reset, preserving original records and authorization decisions. Timing and correction contracts belong to [replay](docs/SPEC.md#history-and-replay) and [restoration](docs/SPEC.md#interest-and-financial-restoration).
+**Resolved interpretation.** Reconcile affected closed days before the next input;
+deferred correction could give that input stale availability. E9 appends the
+principal inverse and refunds fees no longer due, then rebuilds unpaid interest.
+Criterion 6 supports financial restoration before capitalization, not deletion of
+history or reconsideration of Auth-B. See [replay](docs/SPEC.md#history-and-replay)
+and [restoration](docs/SPEC.md#interest-and-financial-restoration).
 
-**Explicit clarification — repeated reversal.** A different attempt to reverse an
-already reversed debit is a business rejection, replacing technical unsupported-input
-handling. Preserve internal idempotence for the same correction cause and the
-existing duplicate-event-ID rule. See [validation](docs/SPEC.md#monetary-validation-and-errors).
+**Explicit clarification.** A fresh attempt to reverse an already reversed debit
+is a business rejection. Repeating internal correction work is idempotent;
+duplicate input IDs follow [A9](#a9--duplicate-ids-and-errors).
 
 ## A4 — Fee bases and missing BHD tariff
 
-**Task ambiguity — eligibility.** Test before the assessed day's own fee rather than let its existing charge affect eligibility, preventing a fee from sustaining itself after its underlying overdraft is corrected. See [fees](docs/SPEC.md#fees).
+**Resolved interpretation.** Exclude the assessed day's own net fee from its
+eligibility test; otherwise the charge could sustain itself after correction.
+Earlier days' fees carry forward. See [fees](docs/SPEC.md#fees).
 
-**Task ambiguity — missing tariff.** Configure explicit no-fee treatment for BHD rather than the earlier runtime undefined-policy diagnostic proposal. TASK gives no BHD tariff or exchange rate; no-fee is an assumption completing explicit configuration, not a task-supplied tariff. See [configuration](docs/SPEC.md#currency-and-policy-configuration).
+**Assumption — missing BHD tariff.** Configure BHD with zero fee, replacing the
+earlier undefined-policy diagnostic proposal. The task supplies neither a BHD
+tariff nor an exchange rate. BHD never becomes negative in this replay, so this
+assumption does not affect its results. See
+[configuration](docs/SPEC.md#currency-and-policy-configuration).
 
 ## A5 — Interest rounding, representation, and finalization
 
-**Task ambiguity — rounding.** Choose `HALF_EVEN` over `HALF_UP` to reduce midpoint tie bias. See [interest](docs/SPEC.md#interest-and-financial-restoration).
+**Convention — rounding.** Use `HALF_EVEN` to reduce midpoint tie bias. The task
+does not select a rounding mode. See
+[interest](docs/SPEC.md#interest-and-financial-restoration).
 
-**Task ambiguity — finalization bases.** Include capitalization in fee eligibility rather than test only the pre-capitalization balance, because the brief refers to closing ledger balance. Exclude capitalization from its own interest base and finalize after the complete stream so the late credit is included. See [finalization](docs/SPEC.md#day-6-finalization).
+**Resolved interpretation.** Finalize after E10. Include capitalization in Day 6
+fee eligibility because fees use the closing ledger balance; exclude that credit
+from its own interest base because it is paid at day's end. See
+[finalization](docs/SPEC.md#day-6-finalization).
 
 ## A6 — Hold lifecycle
 
-**Task ambiguity.** Treat E5 as final settlement rather than partial capture retaining a residual hold: TASK provides neither a partial-settlement indicator nor further captures. Broader hold workflows remain unspecified; see [settlement](docs/SPEC.md#authorizations-and-settlements) and [deferred scope](docs/SPEC.md#verification-and-deferred-work).
+**Resolved interpretation.** E5 is a final settlement: release the full hold and
+debit only AED 185.00. The task gives no partial-capture indicator or further
+captures. Other hold workflows remain [deferred](docs/SPEC.md#verification-and-deferred-work).
 
 ## A7 — Observations and report interpretation
 
-**Task ambiguity — criterion 1.** Use a fee-free prefix calculation rather than a literal posted snapshot to give its qualification precise meaning without suppressing actual fees. Observation definitions belong to SPEC; calculations belong to [NUMBERS](NUMBERS.md#checkpoint-calculations).
+**Resolved interpretation — criterion 1.** Its “before any fee” qualification
+means the fee-free E1–E8 calculation. Actual posted history includes the Day 2
+fee. See [checkpoint calculations](NUMBERS.md#checkpoint-calculations).
+
+**Report choice.** Print one final restated daily table, retaining fee/refund
+history and original authorization decisions. This makes the observation point
+explicit without a second snapshot table. See
+[reporting](docs/SPEC.md#reporting-and-observations).
 
 ## A8 — Currency precision and instalments
 
-**Task ambiguity — allocation.** Put the residual in the last instalment rather than distribute it earlier, using final-instalment balancing as the convention. See [instalments](docs/SPEC.md#instalments).
+**Convention — allocation.** Put the indivisible residual in the last instalment.
+Exact equality is impossible at BHD precision; total conservation is required.
+See [instalments](docs/SPEC.md#instalments).
 
-**Task ambiguity — input precision.** Reject nonzero excess digits rather than round principal, preserving submitted monetary meaning. Redundant trailing zeros remain acceptable because they do not change representability. See [validation](docs/SPEC.md#monetary-validation-and-errors).
+**Resolved interpretation — input precision.** Reject nonzero excess digits
+instead of rounding principal. Accept redundant trailing zeros because the amount
+is exactly representable. See [validation](docs/SPEC.md#monetary-validation-and-errors).
 
 ## A9 — Duplicate IDs and errors
 
-**Task ambiguity — input handling.** Reject every repeated input ID rather than provide an identical-payload retry protocol with conflict rejection. This favors a small, predictable implementation; retry support is outside the assignment. See [validation/errors](docs/SPEC.md#monetary-validation-and-errors).
+**Convention.** Reject every repeated input ID, including identical payloads,
+instead of implementing a retry protocol. This keeps input handling small and
+predictable. Internal correction idempotence is separate. See
+[validation](docs/SPEC.md#monetary-validation-and-errors).
 
 ## A10 — Ordinary input amount signs
 
-**Task ambiguity, explicitly clarified.** CREDIT and DEBIT inputs require
-nonnegative amounts; zero is accepted. DEBIT applies the posting's minus sign.
-Signed input amounts were considered but rejected by explicit clarification,
-keeping the input kind responsible for direction. See
-[monetary validation](docs/SPEC.md#monetary-validation-and-errors).
+**Explicit clarification.** CREDIT and DEBIT take nonnegative amounts, including
+zero. The event kind determines direction, excluding signed operational amounts.
+See [monetary validation](docs/SPEC.md#monetary-validation-and-errors).
 
 ## A11 — Submission-Level Atomicity Limitation
 
-The established atomicity boundary and recovery rule are owned by
+This is an implementation limitation, documented with its recovery rule in
 [DESIGN](docs/DESIGN.md#repository-boundary).
 
 ## A15 — Authorization and settlement amount signs
 
-**Resolved task ambiguity, explicitly clarified.** AUTHORIZATION and SETTLEMENT
-follow [A10](#a10--ordinary-input-amount-signs): accept only nonnegative parsed
-amounts, including zero, and reject negative amounts with
-`DiagnosticNegativeAmount` without financial or hold effects. Strictly positive
-validation and signed operational amounts were rejected by explicit clarification.
-`InputKind` alone determines direction: AUTHORIZATION reserves the amount;
-SETTLEMENT posts its checked negation and releases the original hold. Negative
-holds and settlement credits cannot result from negative input. Zero remains
-subject to availability and authorization-reference rules. See
-[monetary validation](docs/SPEC.md#monetary-validation-and-errors) and
-[verification values](NUMBERS.md#authorization-and-settlement-fixtures).
+**Explicit clarification.** AUTHORIZATION and SETTLEMENT follow
+[A10](#a10--ordinary-input-amount-signs). This excludes both signed amounts and a
+strictly positive requirement. Zero still undergoes availability/reference checks;
+a zero final settlement releases the hold. See
+[validation](docs/SPEC.md#monetary-validation-and-errors).

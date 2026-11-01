@@ -84,10 +84,10 @@ to reduce representation and ownership complexity. Configured code/scale values
 replace the built-in currency enumeration so composition supplies currency identity.
 Currency identity includes code and decimal scale. Money and currency have invalid
 Go zero values. Descriptor validation and compatibility follow
-[monetary validation](SPEC.md#monetary-validation-and-errors), with precision
-bounds justified in [NUMBERS](../NUMBERS.md#configurable-currency-verification).
-The scale limit bounds decimal unit factors and formatting padding while retaining
-the full signed minor-unit range.
+[monetary validation](SPEC.md#monetary-validation-and-errors). The maximum scale
+is 18 because 10^18 fits int64 and 10^19 does not; the three-letter uppercase
+code syntax is a project convention. Signed minor units range from −2^63 through
+2^63 − 1. These are implementation bounds, independent of the replay currencies.
 Domain and business packages contain no currency-code constants, switches, or defaults.
 
 Parse decimal text exactly into minor units, retaining the original text in the
@@ -306,7 +306,7 @@ error before main writes output. Rows follow supplied day/account order under
 
 The runner is sequential and storage is in memory, without persistence,
 concurrent writers, or distributed transactions. Fixed-width amounts and every
-intermediate must fit the [int64 bounds](../NUMBERS.md#int64-representation), even
+intermediate must fit the [int64 bounds](#money-representation), even
 when later terms could cancel an overflowing sum. Out-of-range inputs reject
 without financial effects; derived overflow stops replay before the dependent
 batch is appended. Earlier committed batches remain subject to the atomicity

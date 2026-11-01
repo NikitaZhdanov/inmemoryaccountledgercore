@@ -60,7 +60,7 @@ func TestCurrencyAndConstruction(t *testing.T) {
 	assertMoneyError(t, m, err, domain.ErrInvalidCurrency)
 }
 
-// Literal minor-unit oracles come from NUMBERS.md, independently of Format.
+// Literal minor-unit expectations follow decimal scaling independently of Format.
 func TestParseMoney(t *testing.T) {
 	aed, bhd := canonicalCurrencies(t)
 	for _, tc := range []struct {

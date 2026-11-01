@@ -96,8 +96,9 @@ compose real components independently of the scenario runner.
 - **Completion checks:** Zero/negative bases accrue zero; both midpoint tie
   directions pass in both currencies. Maximum-positive-base interest is exact
   without an overflowing rate intermediate. E10 allocates BHD 3.333, 3.333,
-  3.334 and conserves BHD 10.000 exactly. Calculated expectations and fixture
-  rationale match NUMBERS; no principal ingress rounding is introduced.
+  3.334 and conserves BHD 10.000 exactly. Replay expectations match NUMBERS;
+  arithmetic boundary expectations follow X03/X10; no principal ingress rounding
+  is introduced.
 
 ### P03 — Immutable records and atomic in-memory repository
 
@@ -323,7 +324,8 @@ compose real components independently of the scenario runner.
 - **Use cases:** H07, H09, U07, X03, X06, X08, X09.
 - **Completion checks:** Independent rounded daily sums equal the single credits
   AED 1.03 and BHD 0.008; final closes are AED 466.03 and BHD 10.008.
-  NUMBERS' Day 6 boundary fixtures close at AED 0.01, 0.00, and −25.01.
+  [X08's](USE_CASES.md#x08--day-6-capitalization-crosses-the-fee-boundary) Day 6
+  boundary fixtures close at AED 0.01, 0.00, and −25.01.
   Negative BHD eligibility uses its configured zero charge after capitalization;
   no runtime missing-policy fallback exists.
   No capitalization earns same-day interest; repeat finalization adds nothing.
@@ -444,7 +446,7 @@ compose real components independently of the scenario runner.
 | Ordered six-day replay and per-day output | [Source-field tests](../internal/scenario/scenario_test.go), [checkpoint/final assertions](../tests/replay/scenario_test.go), [literal report oracle](../tests/replay/testdata/canonical_report.txt), executable replay |
 | Intact history without squashing | All existing milestone commits retained; no history changes in P14 |
 | README run/output guidance | [Quick start](../README.md#quick-start), [DEVELOPMENT commands and interpretation](DEVELOPMENT.md#replay-and-isolated-failing-test), existing Make targets |
-| Every chosen constant and rationale | [NUMBERS](../NUMBERS.md): source values, exact formulas/bounds, rounding/allocation, test fixtures, tool/configuration parameters, and halving explanations |
+| Task constants and rationale | [NUMBERS](../NUMBERS.md): supplied values, chosen numerical conventions, exact replay calculations, and the required failing probe's constants; implementation bounds belong to DESIGN and tooling configuration to DEVELOPMENT |
 | Ambiguities and resolutions | [AMBIGUITIES](../AMBIGUITIES.md): task interpretations, explicit clarifications, and links to deferred scope |
 | All eight criteria and abandoned implementations | [REJECTED](../REJECTED.md): refuse 2/7/8; qualify 1/6 and conditional 5; accept 3/4; replacements checked against commits and recorded investigations |
 | One annotated genuinely failing design test | [Tagged probe](../tests/replay/designlimitation_test.go): isolated full command exits 1 at expected 0 versus actual −2,501 minor units; normal recovery tests pass |
