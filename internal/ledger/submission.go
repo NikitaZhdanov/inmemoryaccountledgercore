@@ -30,9 +30,9 @@ const (
 // outcome and nil error; diagnostics are linked by Outcome.DiagnosticKey.
 // Technical failures return a zero outcome and append nothing from this batch.
 // Supplied days/order and raw text are retained; explicit closing and historical
-// fee reconciliation are separate workflows. Reversal and instalment processing
-// remain unsupported until their planned tasks. Deferred authorization workflows
-// also return ErrUnsupportedInput without recording an attempt.
+// fee reconciliation are separate workflows. Reversals support the linked inverse
+// of a single ordinary debit at its original value day; instalments support
+// credits. Other deferred workflows return ErrUnsupportedInput without an attempt.
 func (c *Core) Submit(input domain.InputEvent) (domain.InputOutcome, error) {
 	history := c.repository.History()
 	attempt, duplicate := prepareAttempt(history, input)
@@ -42,10 +42,22 @@ func (c *Core) Submit(input domain.InputEvent) (domain.InputOutcome, error) {
 	if input.ID == "" {
 		return c.reject(attempt, DiagnosticInvalidEventID, "event ID is empty")
 	}
-	if input.InstalmentCount != 0 {
+	if input.InstalmentCount < 0 || (input.InstalmentCount != 0 && input.Kind != domain.InputCredit) {
 		return domain.InputOutcome{}, fmt.Errorf("%w: %s (instalments %d)", ErrUnsupportedInput, input.Kind, input.InstalmentCount)
 	}
 	switch input.Kind {
+	case domain.InputReversal:
+		if _, code, err := c.inputAccount(input); err != nil {
+			return c.reject(attempt, code, err.Error())
+		}
+		batch, outcome, err := reversalBatch(history, attempt)
+		if err != nil {
+			return domain.InputOutcome{}, err
+		}
+		if err := validatePosting(history, batch, input); err != nil {
+			return domain.InputOutcome{}, err
+		}
+		return c.commitBatch(batch, outcome)
 	case domain.InputCredit, domain.InputDebit, domain.InputAuthorization, domain.InputSettlement:
 	default:
 		return domain.InputOutcome{}, fmt.Errorf("%w: %s", ErrUnsupportedInput, input.Kind)
@@ -70,6 +82,11 @@ func submissionBatch(history domain.History, attempt domain.InputAttempt, amount
 		return authorizationBatch(history, attempt, amount)
 	case domain.InputSettlement:
 		return settlementBatch(history, attempt, amount)
+	case domain.InputCredit:
+		if attempt.Input.InstalmentCount > 0 {
+			return instalmentBatch(attempt, amount)
+		}
+		fallthrough
 	default:
 		posting, err := ordinaryPosting(attempt, amount)
 		if err != nil {
@@ -119,16 +136,24 @@ func ordinaryPosting(attempt domain.InputAttempt, amount domain.Money) (domain.R
 	}, nil
 }
 
-func (c *Core) parseInputAmount(input domain.InputEvent) (domain.Money, string, error) {
+func (c *Core) inputAccount(input domain.InputEvent) (domain.Account, string, error) {
 	account, exists := c.accounts[input.AccountID]
 	if !exists {
-		return domain.Money{}, DiagnosticUnknownAccount, fmt.Errorf("%w: %q", ErrUnknownAccount, input.AccountID)
+		return domain.Account{}, DiagnosticUnknownAccount, fmt.Errorf("%w: %q", ErrUnknownAccount, input.AccountID)
 	}
 	if _, err := input.Currency.Scale(); err != nil {
-		return domain.Money{}, DiagnosticInvalidCurrency, err
+		return domain.Account{}, DiagnosticInvalidCurrency, err
 	}
 	if input.Currency != account.Currency {
-		return domain.Money{}, DiagnosticCurrencyMismatch, domain.ErrCurrencyMismatch
+		return domain.Account{}, DiagnosticCurrencyMismatch, domain.ErrCurrencyMismatch
+	}
+	return account, "", nil
+}
+
+func (c *Core) parseInputAmount(input domain.InputEvent) (domain.Money, string, error) {
+	account, code, err := c.inputAccount(input)
+	if err != nil {
+		return domain.Money{}, code, err
 	}
 	amount, err := domain.ParseMoney(account.Currency, input.RawAmount)
 	if err != nil {

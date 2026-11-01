@@ -17,6 +17,9 @@ accept 5 conditionally. TASK.md remains unchanged.
 
 ## Abandoned approaches
 
+- Replaced technical `ErrUnsupportedInput` handling for a different attempt to
+  reverse an already reversed debit with a recorded business rejection, following
+  the [explicit clarification](AMBIGUITIES.md#a3--backdating-and-reversal).
 - Replaced handwritten assertion/error checks with Testify `assert`/`require`
   to adopt the project's selected assertion library. Retained Go's test runner,
   fixture tables, and exact expectations; see [A13](AMBIGUITIES.md#a13--testify-unit-test-assertions).

@@ -12,6 +12,12 @@ corrected unpaid accruals, and preserved authorization outcomes. They do not
 execute input processing or reconciliation; those integration checks remain
 scheduled in [the implementation plan](IMPLEMENTATION_PLAN.md).
 
+P07 [reversal](../internal/ledger/corrections_test.go) and
+[instalment](../internal/ledger/instalments_test.go) unit tests plus
+[posting integration](../tests/replay/corrections_test.go) cover H05/H06's
+principal postings, U04 duplicates, and X06's principal-correction idempotence.
+Fee refunds and closed-day accrual restoration remain P08/P09 integration work.
+
 Each scenario is independent unless its preconditions name a replay checkpoint.
 Validation fixtures supplement, rather than modify, E1–E10. Expected rejection,
 decline, initialization error, or technical failure is a **passing regression test**

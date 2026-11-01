@@ -3,8 +3,9 @@
 Status: business behavior resolved for the supplied replay and covered validation
 cases. P01 money primitives, P02 pure interest/allocation calculations, P03
 append-only storage, P04 history projections, and P05 configuration/ordinary
-submissions, plus P06 authorization/final settlement, are implemented. Reversals,
-instalment posting, reconciliation, and full replay remain planned.
+submissions, P06 authorization/final settlement, and P07 linked principal reversal
+and instalment posting are implemented. Fee reconciliation, closing, and full
+replay remain planned.
 
 [TASK.md](TASK.md) preserves the original assignment and canonical input stream.
 This file defines behavior; [AMBIGUITIES.md](../AMBIGUITIES.md) records decision
@@ -101,6 +102,13 @@ failures must not be suppressed as business rejections. Internal correction
 idempotence remains distinct from input rejection: a second E9 input rejects;
 repeating correction processing for recorded E9 adds nothing. Fresh-repository
 replay is deterministic; resubmission to a populated repository rejects duplicates.
+
+A new attempt to reverse a debit already reversed by a different attempt records
+a rejected outcome with `DiagnosticAlreadyReversed` and no financial or hold
+effects. It returns no technical error on successful rejection recording. Reusing
+an event ID still takes duplicate-rejection priority; repeating the same internal
+correction cause remains an idempotent no-op. See
+[A3](../AMBIGUITIES.md#a3--backdating-and-reversal).
 
 ## Fees
 
@@ -241,7 +249,9 @@ tests under P04. P05 adds configuration/submission unit tests and real-component
 ordinary-posting integration; full replay and the required failing test remain
 pending. P06 adds authorization/final-settlement tests, E1–E6 integration, and
 direct-fixture coverage of Auth-B's decline and retained decision after financial
-restoration. README links
+restoration. P07 adds linked principal-reversal and instalment-posting unit tests
+and real-component integration; fee refunds and full restoration remain pending
+P08/P09. README links
 to [DEVELOPMENT](DEVELOPMENT.md) for runtime/dependency details and test commands;
 add replay instructions when built.
 Preserve intact commit history without squashing.

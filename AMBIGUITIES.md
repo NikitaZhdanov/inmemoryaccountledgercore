@@ -14,6 +14,11 @@ This record owns alternatives, resolutions, and rationale for business-level tas
 
 **Task ambiguities.** Reconcile closed days immediately rather than defer correction, so subsequent inputs see corrected history without closing the open day early. Restore affected financial effects, including unjustified fees, rather than reverse principal alone or retain those fees. Interpret criterion 6 as financial restoration rather than a replay-state reset, preserving original records and authorization decisions. Timing and correction contracts belong to [replay](docs/SPEC.md#history-and-replay) and [restoration](docs/SPEC.md#interest-and-financial-restoration).
 
+**Explicit clarification — repeated reversal.** A different attempt to reverse an
+already reversed debit is a business rejection, replacing technical unsupported-input
+handling. Preserve internal idempotence for the same correction cause and the
+existing duplicate-event-ID rule. See [validation](docs/SPEC.md#monetary-validation-and-errors).
+
 ## A4 — Fee bases and missing BHD tariff
 
 **Task ambiguity — eligibility.** Test before the assessed day's own fee rather than let its existing charge affect eligibility, preventing a fee from sustaining itself after its underlying overdraft is corrected. See [fees](docs/SPEC.md#fees).

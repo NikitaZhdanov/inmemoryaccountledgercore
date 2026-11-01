@@ -55,8 +55,12 @@ configuration ownership, exact principal validation, source retention, duplicate
 and atomic technical failures. Authorization tests cover exact-zero/negative
 proposed availability, recorded declines, posted fees, unpaid-interest exclusion,
 final settlement/full hold release, duplicate outcomes, and atomic failures.
+Reversal/instalment tests cover original-entry and correction-cause links,
+internal correction idempotence versus duplicate input rejection, ordered exact
+allocation, retained source fields, and atomic append/overflow failures.
 `tests/replay` wires the real core and memory adapter for E1–E6, including unknown
-settlement rejection and continuation; full replay and reconciliation remain planned.
+settlement rejection and continuation, and for E7/E9/E10 principal posting and
+currency isolation. Full replay and reconciliation remain planned.
 
 For the full local checks, using a current Go toolchain:
 

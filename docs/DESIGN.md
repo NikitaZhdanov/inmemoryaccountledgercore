@@ -189,6 +189,26 @@ authorization IDs, authorizations with differing dates, inactive-ID settlements,
 and over-captures. Shared submission validation enforces the amount-sign rule in
 [SPEC](SPEC.md#monetary-validation-and-errors) before building transitions or postings.
 
+[Principal correction](../internal/ledger/corrections.go) resolves the first
+attempt for the referenced event to its stored debit. The inverse uses checked
+negation, retains the original value day, and links both the original entry and
+the reversal attempt. Its key derives from the original entry; repeating the
+same correction cause returns no records before any append. Input resubmission
+still rejects through the shared duplicate check. Supported reversal inputs
+reference a single ordinary debit on the same account/currency/value day;
+missing or other targets return ErrUnsupportedInput without records. A different
+cause for an already reversed debit yields a business error that the reversal
+batch builder converts to the shared attempt/outcome/diagnostic rejection batch.
+
+[Instalment posting](../internal/ledger/instalments.go) uses the pure allocation
+function and constructs ordered credits keyed by source event and one-based
+position. All parts retain the input dates, currency, count, and attempt link,
+and share the submission's single validated atomic batch. Positive credit counts
+request allocation; zero retains ordinary posting. Negative counts and instalment
+requests for other kinds remain unsupported. Reversal account/currency validation
+is shared with amount parsing; its principal comes from the original entry rather
+than a separately parsed input amount.
+
 Financial changes affecting closed history trigger chronological reconciliation
 of affected account/days before the next input. Ledger projects the value-dated
 balance, excludes the assessed day's own net fee from eligibility, compares the
