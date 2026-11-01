@@ -3,7 +3,8 @@
 This catalog owns verification scenarios and their implemented test coverage.
 [SPEC](SPEC.md) owns business expectations, [DESIGN](DESIGN.md) technical
 boundaries, and [TASK](TASK.md) the canonical input. Scenario IDs are labels;
-amounts and boundary fixtures come from [NUMBERS](../NUMBERS.md). The
+replay amounts come from [NUMBERS](../NUMBERS.md); additional verification fixtures
+are specified below and in the linked tests. The
 [coverage matrix](#coverage-review-and-scope-boundary) maps all 28 scenarios to
 executable assertions; execution outcomes belong to [WORKLOG](../WORKLOG.md).
 
@@ -141,8 +142,8 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
 
 ### U03 — Reject principal with excess precision
 
-- **Preconditions:** Valid account and otherwise covered input; isolated fixtures
-  from [verification parameters](../NUMBERS.md#verification-parameters).
+- **Preconditions:** Valid account and otherwise covered input; isolated
+  excess-precision fixtures.
 - **Action:** Submit AED 1.005 or BHD 1.0001, then a valid input with a fresh ID.
 - **Expected outcome:** Reject each invalid amount with its diagnostic and no
   financial/hold effects; the subsequent valid input processes.
@@ -179,7 +180,7 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
 ### U06 — Reject unrepresentable input
 
 - **Preconditions:** Exact monetary text one minor unit outside either `int64`
-  endpoint, using the [boundary inventory](../NUMBERS.md#int64-representation).
+  endpoint, using the [representation bounds](DESIGN.md#money-representation).
 - **Action:** Parse/submit the input, then process a representable input.
 - **Expected outcome:** Out-of-range diagnostic and rejection without financial
   effects; continuation remains possible. Scaling/parsing never wraps or clamps.
@@ -225,10 +226,10 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
 ### X03 — Interest at zero, negative balances, and exact ties
 
 - **Preconditions:** Separate zero/negative bases and the AED/BHD positive midpoint
-  fixtures in [NUMBERS](../NUMBERS.md#verification-parameters).
+  fixtures in the [interest tests](../internal/interest/interest_test.go).
 - **Action:** Calculate each daily accrual and inspect unpaid state before capitalization.
 - **Expected outcome:** Zero for nonpositive bases; both even-tie directions match
-  the tabulated exact results. Positive accrued amounts remain unpaid state,
+  the tests' literal exact expectations. Positive accrued amounts remain unpaid state,
   without accrual ledger records or increased availability.
 - **Preserved invariants:** Currency-scale HALF_EVEN only for calculated interest;
   [interest and financial restoration](SPEC.md#interest-and-financial-restoration).
@@ -278,8 +279,8 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
 
 ### X08 — Day 6 capitalization crosses the fee boundary
 
-- **Preconditions:** The separate AED fixtures in
-  [Day 6 boundaries](../NUMBERS.md#day-6-boundaries), with prior accrual 0.02.
+- **Preconditions:** Separate AED fixtures in the
+  [finalization tests](../internal/ledger/finalization_test.go), with prior accrual 0.02.
 - **Action:** Finalize bases −0.01, −0.02, and −0.03 independently.
 - **Expected outcome:** Final closes 0.01, 0.00, and −25.01, respectively;
   no fee in the first two cases and the specified charge in the last. Current-day
@@ -308,7 +309,9 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
 - **Action:** Calculate the base's daily interest; separately attempt cross-currency arithmetic.
 - **Expected outcome:** Interest is exact and safely rounded without an overflowing
   rate intermediate. Cross-currency arithmetic is invalid; no conversion is inferred.
-  Exact expectations derive independently from [NUMBERS](../NUMBERS.md#int64-representation).
+  For the maximum base, 9,223,372,036,854,775,807 =
+  2,500 × 3,689,348,814,741,910 + 807; the remainder is below the 1,250 midpoint,
+  so daily interest is 3,689,348,814,741,910 minor units.
 - **Preserved invariants:** Exact money/rate calculations per
   [monetary validation and errors](SPEC.md#monetary-validation-and-errors);
   representation checks per [DESIGN](DESIGN.md#money-representation).
@@ -329,7 +332,7 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
 
 - **Preconditions:** Independently constructed code/scale descriptors, including
   scales zero, four, and 18, plus invalid code/scale fixtures in
-  [NUMBERS](../NUMBERS.md#configurable-currency-verification).
+  [currency tests](../internal/domain/currency_test.go).
 - **Action:** Validate descriptors; parse/format exact amounts at each scale;
   add/subtract/sum values with matching or conflicting descriptors.
 - **Expected outcome:** Invalid descriptors reject. Fixed-point formatting and

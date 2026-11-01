@@ -11,7 +11,7 @@ import (
 	"inmemoryaccountledgercore/internal/domain"
 )
 
-// Literal ratio oracles in NUMBERS.md cover signed ties, odd denominators,
+// Literal ratio expectations cover signed ties, odd denominators,
 // and endpoint arithmetic independently of the daily interest rate.
 func TestRoundHalfEven(t *testing.T) {
 	for _, tc := range []struct {

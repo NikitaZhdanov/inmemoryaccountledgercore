@@ -16,7 +16,7 @@
   scanning also queries the Go vulnerability database.
 
 No services or configuration are needed. Toolchain versions used in earlier
-checks are recorded in [WORKLOG](../WORKLOG.md) and [NUMBERS](../NUMBERS.md#development-automation).
+checks are recorded in [WORKLOG](../WORKLOG.md).
 
 ## Setup and tests
 
@@ -51,7 +51,7 @@ assertion or check returns a nonzero exit status.
 
 Coverage by behavior and named test assertion is maintained in
 [USE_CASES](USE_CASES.md#coverage-review-and-scope-boundary); independent exact
-expectations belong to [NUMBERS](../NUMBERS.md). Normal tests include the
+replay expectations belong to [NUMBERS](../NUMBERS.md). Normal tests include the
 canonical replay, report, configuration, and interruption/recovery regressions.
 
 For the full local checks, using a current Go toolchain:
@@ -70,7 +70,7 @@ multiple real components belong in the `tests/replay` external test package, wir
 boundaries as main rather than importing the executable.
 `go test ./internal/...` runs unit tests and `go test ./tests/replay` runs integration
 tests; `go test ./...` includes both. Use table-driven tests with independent exact
-expectations from [NUMBERS](../NUMBERS.md) and coverage from
+expectations, the replay calculations in [NUMBERS](../NUMBERS.md), and coverage from
 [USE_CASES](USE_CASES.md). Review import direction as packages are introduced;
 `go list -deps ./...` must match the [package map](DESIGN.md#packages-and-dependencies).
 
@@ -104,8 +104,9 @@ than a multi-linter framework or service integration.
 
 Analyzer versions are pinned in Makefile and invoked with
 `go run package@version`; their dependencies stay outside the application module.
-Test dependencies remain in the module. Version pins and automation parameters
-are recorded in [NUMBERS](../NUMBERS.md#development-automation).
+Test dependencies remain in the module. Version pins belong to
+[Makefile](../Makefile), [go.mod](../go.mod), and the
+[workflow](../.github/workflows/go.yml).
 
 Formatting targets use `gofmt` from the toolchain selected by `GO` and
 `GOTOOLCHAIN`, resolved through `go env GOROOT`. Setting `GOTOOLCHAIN` alone
