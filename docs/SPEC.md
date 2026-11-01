@@ -1,7 +1,8 @@
 # Ledger specification
 
 Status: business behavior resolved for the supplied replay and covered validation
-cases. No implementation is authorized in this phase.
+cases. The human authorized P01 money primitives; ledger/replay implementation
+remains pending later plan tasks.
 
 [TASK.md](TASK.md) preserves the original assignment and canonical input stream.
 This file defines behavior; [AMBIGUITIES.md](../AMBIGUITIES.md) records decision
@@ -202,8 +203,9 @@ The assignment still requires a real isolated failing test. Choose it during
 implementation, when it can expose a genuine design limitation; no assertion or
 expected result is preselected. Explain what it reveals inline, preserve its
 failure, isolate it from the passing normal suite, document its exact command,
-and report the observed result honestly. No executable ledger tests exist or have run.
-Add actual runtime/dependency and replay/test instructions to README when built.
+and report the observed result honestly. Money unit tests exist under P01;
+ledger/replay tests and the required failing test remain pending. README records
+current runtime/dependencies and test commands; add replay instructions when built.
 Preserve intact commit history without squashing.
 
 Extra workflows—authorizations with differing booking/value dates, explicit
