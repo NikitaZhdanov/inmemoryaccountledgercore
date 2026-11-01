@@ -5,7 +5,8 @@ parameters. [SPEC](docs/SPEC.md) defines behavior; [AMBIGUITIES](AMBIGUITIES.md)
 explains business choices. The [Go design](docs/DESIGN.md#language-and-tooling)
 uses checked `int64` minor units with the representation bounds below.
 P01 uses Go module `inmemoryaccountledgercore`, baseline Go 1.23.1, observed
-toolchain `go1.23.1 darwin/amd64`, and no external dependencies. The module path
+toolchain `go1.23.1 darwin/amd64`, and standard-library-only production code.
+Unit tests now use Testify at the human's request. The module path
 is a local import identity, not a network location; the runtime baseline matches
 the available toolchain rather than speculating about an untested older version.
 Version labels and platform names cannot meaningfully be halved.
@@ -250,3 +251,15 @@ ledger policy or changes to P01's baseline.
 | Test `-count=1` | Race/coverage run bypasses cached test results | A half execution is meaningless; a single fresh run gives the requested evidence without repetition. |
 | `coverage.out`; no coverage threshold | Go coverage profile for local inspection; excluded by the existing ignore rule | Artifact name is an identifier; no arbitrary percentage is selected to halve. |
 | Shell exit status 1 for formatting violations | Conventional unsuccessful Make target, also used by the formatter rejection probe | Status is discrete; halving is meaningless. |
+
+### Test assertion dependencies
+
+| Value | Meaning, source or rationale | Why this value rather than half |
+| --- | --- | --- |
+| Testify v1.12.1 | Human-requested unit-test assertion library; published release, pinned in go.mod with checksums in go.sum | Version identity cannot be halved; a stable release supplies the requested assertions without changing monetary expectations. |
+| go.yaml.in/yaml/v3 v3.0.5 | Testify's resolved indirect dependency for YAML assertions, recorded by `go mod tidy` | Resolver-selected version, not an independently chosen numerical policy; halving a version is meaningless. |
+
+Both dependencies are reachable only through tests; production imports remain
+standard library. Equality uses Testify `Equal`, preserving expected numeric
+types and exact values; no tolerance or extra verification parameter is selected.
+`govulncheck -test` includes these test paths in the existing security check.

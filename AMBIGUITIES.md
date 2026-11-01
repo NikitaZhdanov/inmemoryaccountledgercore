@@ -210,3 +210,21 @@ weekly Dependabot updates maintain those action pins. Analyzer versions remain
 explicit Makefile pins to review when upgrading. Verification includes executing
 the Make targets and checking formatting rejection, workflow syntax, and source
 fidelity; hosted CI results can only be observed after a push.
+
+## A13 — Testify unit-test assertions
+
+The human explicitly requested Testify for unit tests, superseding the earlier
+standard-library-only test choice. Keep Go's `testing` runner and existing
+table-driven cases, use `require` for prerequisites and expected error identities,
+and `assert` for independent result checks. Equality stays exact and type-sensitive;
+no approximate assertions or expected values change. Raw sentinel comparisons
+become Testify's `ErrorIs`/`NotErrorIs` checks so wrapped-error behavior is retained.
+
+Testify is a pinned test-only module dependency; production code remains standard
+library only. Record its resolved transitive dependencies in NUMBERS and go.sum,
+and include go.sum in the CI dependency cache key. This is a requested assertion
+library change, not new ledger behavior, test scenarios, or a replacement test
+runner. Verify normal tests on the Go 1.23.1 baseline and full checks on the
+automation toolchain, preserving all existing literal oracles and coverage.
+The existing vulnerability target now includes test files with `-test`, so the
+new test-only dependency is part of the scan.

@@ -28,3 +28,9 @@ range. Human review favored simpler `int64` value semantics; the revised
 [design](docs/DESIGN.md#language-and-tooling) replaces that proposal with checked
 integer arithmetic and explicit representation-error handling. This was a design
 revision, not an implemented approach that failed a test.
+
+After P01, the human requested Testify. Replaced the implemented handwritten
+assertion/error checks with Testify `assert`/`require`, retaining every table and
+literal expectation. The original approach did not fail; it was superseded by
+the human's assertion-library preference. Go's test runner and standard-library
+production code remain; see [A13](AMBIGUITIES.md#a13--testify-unit-test-assertions).
