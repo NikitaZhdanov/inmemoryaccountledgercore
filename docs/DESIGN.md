@@ -56,6 +56,8 @@ Currency identity includes code and decimal scale. Money and currency have inval
 Go zero values. Descriptor validation and compatibility follow
 [monetary validation](SPEC.md#monetary-validation-and-errors), with precision
 bounds justified in [NUMBERS](../NUMBERS.md#configurable-currency-verification).
+The scale limit bounds decimal unit factors and formatting padding while retaining
+the full signed minor-unit range.
 Domain and ledger contain no currency-code constants, switches, or defaults.
 
 Parse decimal text exactly into minor units, retaining the original text in the
@@ -74,8 +76,8 @@ point, decimal context, or tolerance is used.
 
 The [currency](../internal/domain/currency.go) and
 [money](../internal/domain/money.go) code own API signatures and error sentinels;
-[A9](../AMBIGUITIES.md#a9--currency-precision-and-instalments) records parsing
-grammar and value semantics. Callers use `errors.Is` to distinguish input
+[A9](../AMBIGUITIES.md#a9--currency-precision-and-instalments) records the parsing
+trade-off. Callers use `errors.Is` to distinguish input
 range/precision errors from derived arithmetic overflow.
 
 ## Configuration validation

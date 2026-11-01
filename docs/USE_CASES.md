@@ -362,7 +362,7 @@ Differing authorization booking/value dates, explicit partial/over-captures,
 expiry/cancellation, inactive-ID settlements, and additional unexercised input
 validation categories stay outside this catalog's asserted behavior; see
 [deferred scope](SPEC.md#verification-and-deferred-work) and
-[A10](../AMBIGUITIES.md#a10--duplicate-ids-and-errors). Alternate BHD tariffs,
+[validation scope](SPEC.md#monetary-validation-and-errors). Alternate BHD tariffs,
 exchange rates, retry/recovery protocols, performance targets, and concurrent writers
 remain outside scope. The design remains sequential and in memory.
 
