@@ -1,7 +1,8 @@
 # Implementation plan
 
-Status: P01–P02 implemented; P03–P14 remain planned. Money and calculation unit
-tests exist; ledger replay and the required failing design test remain pending.
+Status: P01–P03 implemented; P04–P14 remain planned. Money, calculation, and
+repository unit tests exist; ledger replay and the required failing design test
+remain pending.
 
 [TASK](TASK.md) preserves the assignment; [SPEC](SPEC.md) defines agreed behavior;
 [DESIGN](DESIGN.md) proposes its Go implementation; [USE_CASES](USE_CASES.md)
@@ -97,6 +98,14 @@ compose real components before the scenario runner exists.
 
 ### P03 — Immutable records and atomic in-memory repository
 
+- **Status:** Implemented in [domain records](../internal/domain/records.go), the
+  [ledger interface](../internal/ledger/repository.go), and the
+  [memory adapter](../internal/repository/memory/repository.go), with adjacent
+  [repository tests](../internal/repository/memory/repository_test.go). Storage
+  checks envelope shape and global record keys, preserves order, and detaches
+  containers and payloads on write/read. Duplicate-input decisions, configuration
+  validation, and projection rebuilding remain in their scheduled tasks; U04,
+  U07, and X11 have storage-level coverage only.
 - **Scope:** Define account, original input, attempt/outcome, monetary entry,
   authorization transition, diagnostic, batch, and history records in
   `internal/domain`. Define the small `History()` / `Append(batch)` interface in

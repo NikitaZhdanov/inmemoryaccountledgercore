@@ -39,6 +39,7 @@ structs keep this graph acyclic without dependency injection tooling.
 | Monetary entry | Signed amount, account, booking/value days, kind, source/correction cause, original-entry or fee-obligation links, and instalment position where applicable. |
 | Authorization transition | Recorded approval, decline, or final settlement, linked to the input and original hold. |
 | Diagnostic | Reason, account, observation day, input/correction cause, and assessed day where applicable; decline reasons link to their outcome. |
+| Day close | Account/day checkpoint identifying historical days eligible for reconciliation. |
 | Rebuildable state | Balances, active holds/current authorization lookup, fee net effects, rounded unpaid accrual per account/day, closed-day tracking. |
 
 Shared history records, batches, and snapshots belong to `domain`; disposable
@@ -48,6 +49,12 @@ decisions rather than reevaluating them. Stored slices/maps remain private;
 defensive copies on submission and read-back, including nested mutable data,
 prevent caller mutation of history. Money and currency have private value fields
 and require no reference ownership management.
+
+[Domain records](../internal/domain/records.go) use a keyed envelope with exactly
+one payload pointer. Payload structs contain only value fields; `Record.Clone`
+detaches their pointers. Adding mutable payload fields requires extending that
+copy operation. Batch and history containers retain a single total record order
+across payload types. API fields and link semantics are documented in code.
 
 ## Money representation
 
@@ -102,15 +109,20 @@ Canonical values and the explicit no-fee assumption are owned by
 
 ## Repository boundary
 
-Ledger owns a small interface with `History()` and `Append(batch)` using domain
-types. The memory adapter stores an append-only slice and a record-key index;
-history scans suffice without storage-specific queries or persisted aggregates.
+Ledger owns a small [interface](../internal/ledger/repository.go) with `History()`
+and `Append(batch)` using domain types. The
+[memory adapter](../internal/repository/memory/repository.go) stores an append-only
+slice and a record-key index. History scans suffice without storage-specific
+queries or persisted aggregates.
 Storage enforces structural integrity without fee, interest, or approval policy.
 
 `History()` returns an ordered, detached snapshot. `Append` copies submitted
-records and validates all record keys, including conflicts within the proposed
-batch, before committing the entire batch or none of it. The core computes the
-complete batch before append and refreshes affected projections only after a
+records and validates nonempty, globally unique record keys, including conflicts
+within the proposed batch, and single-payload envelopes before committing the
+entire batch or none of it. Empty batches append nothing. Storage does not
+validate business fields, reference targets, or supplied event-ID uniqueness.
+The core computes the complete batch before append and refreshes affected
+projections only after a
 successful append. Business rejections record attempts/outcomes/diagnostics
 without monetary or hold effects; unexpected failures propagate as technical
 errors under [SPEC](SPEC.md#monetary-validation-and-errors).
