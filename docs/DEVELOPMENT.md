@@ -29,6 +29,9 @@ go mod download
 
 ```sh
 go test ./internal/domain
+go test ./internal/interest
+go test ./internal/projection
+go test ./internal/posting
 go test ./internal/ledger
 go test ./internal/repository/memory
 go test ./tests/replay
@@ -36,7 +39,8 @@ go test ./...
 go vet ./...
 ```
 
-The focused commands run money, ledger, and repository unit tests plus posting
+The focused commands run domain, policy, projection, posting, ledger, and
+repository unit tests plus posting
 integration; `go test ./...` runs all implemented tests.
 Success prints `ok`; vet is silent on success. A failing
 assertion or check returns a nonzero exit status. The money tests use literal
@@ -74,9 +78,11 @@ make ci
 
 ## Test organization
 
-Place unit tests beside each package in `*_test.go`; ledger unit tests can use a
-test-local repository double. Tests composing multiple real components belong in
-the `tests/replay` external test package, wiring fresh components through the same
+Place unit tests beside each package in `*_test.go`. Interest and allocation
+tests live with their calculations; projection tests use literal history; posting
+builder tests have no repository. Ledger workflow tests use a test-local
+repository double to verify commits, failures, and orchestration. Tests composing
+multiple real components belong in the `tests/replay` external test package, wiring fresh components through the same
 boundaries as the planned main rather than importing the executable. Currently,
 `go test ./internal/...` runs unit tests and `go test ./tests/replay` runs integration
 tests; `go test ./...` includes both. Use table-driven tests with independent exact

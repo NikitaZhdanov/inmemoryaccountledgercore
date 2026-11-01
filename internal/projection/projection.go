@@ -1,4 +1,5 @@
-package ledger
+// Package projection rebuilds read-only ledger state from detached history.
+package projection
 
 import (
 	"errors"
@@ -6,6 +7,7 @@ import (
 	"sort"
 
 	"inmemoryaccountledgercore/internal/domain"
+	"inmemoryaccountledgercore/internal/interest"
 )
 
 var (
@@ -185,7 +187,7 @@ func (p *Projection) computeAccruals(accountOrder []domain.AccountID) error {
 			if err != nil {
 				return err
 			}
-			accrual, err := DailyInterest(base)
+			accrual, err := interest.Daily(base)
 			if err != nil {
 				return err
 			}

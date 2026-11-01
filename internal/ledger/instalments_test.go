@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"inmemoryaccountledgercore/internal/domain"
+	"inmemoryaccountledgercore/internal/posting"
 )
 
 func instalmentFixture(t *testing.T, opening int64) (*Core, *journal, domain.InputEvent) {
@@ -76,7 +77,7 @@ func TestOrderedInstalmentPostings(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, domain.OutcomeRejected, rejected.Status)
 				requireAttempt(t, repository, start, duplicate, rejected)
-				assert.Equal(t, DiagnosticDuplicateID, repository.records[start+2].Diagnostic.Code)
+				assert.Equal(t, posting.DiagnosticDuplicateID, repository.records[start+2].Diagnostic.Code)
 				requireBalance(t, repository, input.AccountID, 6, tc.total)
 			}
 		})
@@ -85,9 +86,9 @@ func TestOrderedInstalmentPostings(t *testing.T) {
 
 func TestInstalmentRejectionsAndContinuation(t *testing.T) {
 	for _, tc := range []struct{ raw, code string }{
-		{"10.0001", DiagnosticAmountPrecision},
-		{"9223372036854775.808", DiagnosticAmountRange},
-		{"-0.001", DiagnosticNegativeAmount},
+		{"10.0001", posting.DiagnosticAmountPrecision},
+		{"9223372036854775.808", posting.DiagnosticAmountRange},
+		{"-0.001", posting.DiagnosticNegativeAmount},
 	} {
 		core, repository, input := instalmentFixture(t, 0)
 		input.RawAmount = tc.raw
@@ -101,7 +102,7 @@ func TestInstalmentRejectionsAndContinuation(t *testing.T) {
 		outcome, err = core.Submit(input)
 		require.NoError(t, err)
 		assert.Equal(t, domain.OutcomeRejected, outcome.Status, "rejected IDs are reserved too")
-		assert.Equal(t, DiagnosticDuplicateID, repository.records[6].Diagnostic.Code)
+		assert.Equal(t, posting.DiagnosticDuplicateID, repository.records[6].Diagnostic.Code)
 		input.ID = "fresh"
 		outcome, err = core.Submit(input)
 		require.NoError(t, err)

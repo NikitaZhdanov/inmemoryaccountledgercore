@@ -8,6 +8,8 @@ import (
 
 	"inmemoryaccountledgercore/internal/domain"
 	"inmemoryaccountledgercore/internal/ledger"
+	"inmemoryaccountledgercore/internal/posting"
+	"inmemoryaccountledgercore/internal/projection"
 	"inmemoryaccountledgercore/internal/repository/memory"
 )
 
@@ -56,15 +58,15 @@ func TestAuthorizationAndFinalSettlement(t *testing.T) {
 			history := repository.History()
 			assert.Equal(t, before.Records, history.Records[:len(before.Records)])
 			assert.Equal(t, input, history.Records[len(before.Records)].Attempt.Input)
-			projection, err := ledger.Rebuild(history, len(history.Records))
+			state, err := projection.Rebuild(history, len(history.Records))
 			require.NoError(t, err)
-			balance, err := projection.Balance(input.AccountID, tc.day, ledger.BalanceOptions{})
+			balance, err := state.Balance(input.AccountID, tc.day, projection.BalanceOptions{})
 			require.NoError(t, err)
 			assert.Equal(t, tc.balance, balance.MinorUnits())
-			hold, err := projection.ActiveHolds(input.AccountID)
+			hold, err := state.ActiveHolds(input.AccountID)
 			require.NoError(t, err)
 			assert.Equal(t, tc.hold, hold.MinorUnits())
-			available, err := projection.AvailableBalance(input.AccountID, tc.day)
+			available, err := state.AvailableBalance(input.AccountID, tc.day)
 			require.NoError(t, err)
 			assert.Equal(t, tc.available, available.MinorUnits())
 			if tc.id == "E3" {
@@ -76,7 +78,7 @@ func TestAuthorizationAndFinalSettlement(t *testing.T) {
 				assert.Equal(t, int64(-18500), records[2].Entry.Amount.MinorUnits())
 				assert.Equal(t, approval.Key, records[3].Authorization.OriginalHoldKey)
 				assert.Equal(t, approval.Authorization.Hold, records[3].Authorization.Hold)
-				auth, exists := projection.Authorization(input.AccountID, "Auth-A")
+				auth, exists := state.Authorization(input.AccountID, "Auth-A")
 				require.True(t, exists)
 				assert.Equal(t, domain.AuthorizationSettled, auth.Transition.State)
 			}
@@ -84,9 +86,9 @@ func TestAuthorizationAndFinalSettlement(t *testing.T) {
 				records := history.Records[len(before.Records):]
 				require.Len(t, records, 3)
 				assert.Equal(t, outcome.DiagnosticKey, records[2].Key)
-				assert.Equal(t, ledger.DiagnosticUnknownAuthorization, records[2].Diagnostic.Code)
+				assert.Equal(t, posting.DiagnosticUnknownAuthorization, records[2].Diagnostic.Code)
 				assert.Equal(t, domain.Day(4), records[2].Diagnostic.ObservationDay)
-				_, exists := projection.Authorization(input.AccountID, "Auth-Z")
+				_, exists := state.Authorization(input.AccountID, "Auth-Z")
 				assert.False(t, exists)
 			}
 		})
@@ -100,9 +102,9 @@ func TestAuthorizationAndFinalSettlement(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, domain.OutcomeAccepted, outcome.Status)
 	history := repository.History()
-	projection, err := ledger.Rebuild(history, len(history.Records))
+	state, err := projection.Rebuild(history, len(history.Records))
 	require.NoError(t, err)
-	balance, err := projection.Balance("ACC-001", 5, ledger.BalanceOptions{})
+	balance, err := state.Balance("ACC-001", 5, projection.BalanceOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, int64(46501), balance.MinorUnits())
 }

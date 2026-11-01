@@ -1,9 +1,10 @@
-package ledger
+package posting
 
 import (
 	"fmt"
 
 	"inmemoryaccountledgercore/internal/domain"
+	"inmemoryaccountledgercore/internal/projection"
 )
 
 const (
@@ -15,21 +16,20 @@ const (
 // and active holds. Derived unpaid accruals are never spendable money.
 func authorizationBatch(history domain.History, attempt domain.InputAttempt, amount domain.Money) (domain.Batch, domain.InputOutcome, error) {
 	if amount.MinorUnits() < 0 {
-		batch, outcome := buildRejectionBatch(attempt, DiagnosticNegativeAmount, negativeAmountReason)
-		return batch, outcome, nil
+		return buildRejectionBatch(attempt, DiagnosticNegativeAmount, negativeAmountReason)
 	}
 	input := attempt.Input
 	if input.AuthorizationID == "" || input.BookingDay != input.ValueDay {
 		return domain.Batch{}, domain.InputOutcome{}, fmt.Errorf("%w: authorization requires an ID and matching booking/value days", ErrUnsupportedInput)
 	}
-	projection, err := Rebuild(history, len(history.Records))
+	observed, err := projection.Rebuild(history, len(history.Records))
 	if err != nil {
 		return domain.Batch{}, domain.InputOutcome{}, err
 	}
-	if _, exists := projection.Authorization(input.AccountID, input.AuthorizationID); exists {
+	if _, exists := observed.Authorization(input.AccountID, input.AuthorizationID); exists {
 		return domain.Batch{}, domain.InputOutcome{}, fmt.Errorf("%w: authorization ID already recorded", ErrUnsupportedInput)
 	}
-	available, err := projection.AvailableBalance(input.AccountID, input.ValueDay)
+	available, err := observed.AvailableBalance(input.AccountID, input.ValueDay)
 	if err != nil {
 		return domain.Batch{}, domain.InputOutcome{}, err
 	}
@@ -64,21 +64,19 @@ func authorizationBatch(history domain.History, attempt domain.InputAttempt, amo
 
 func settlementBatch(history domain.History, attempt domain.InputAttempt, amount domain.Money) (domain.Batch, domain.InputOutcome, error) {
 	if amount.MinorUnits() < 0 {
-		batch, outcome := buildRejectionBatch(attempt, DiagnosticNegativeAmount, negativeAmountReason)
-		return batch, outcome, nil
+		return buildRejectionBatch(attempt, DiagnosticNegativeAmount, negativeAmountReason)
 	}
 	input := attempt.Input
 	if input.AuthorizationID == "" {
 		return domain.Batch{}, domain.InputOutcome{}, fmt.Errorf("%w: settlement requires an authorization ID", ErrUnsupportedInput)
 	}
-	projection, err := Rebuild(history, len(history.Records))
+	state, err := projection.Rebuild(history, len(history.Records))
 	if err != nil {
 		return domain.Batch{}, domain.InputOutcome{}, err
 	}
-	original, exists := projection.Authorization(input.AccountID, input.AuthorizationID)
+	original, exists := state.Authorization(input.AccountID, input.AuthorizationID)
 	if !exists {
-		batch, outcome := buildRejectionBatch(attempt, DiagnosticUnknownAuthorization, "authorization ID is absent from the account history")
-		return batch, outcome, nil
+		return buildRejectionBatch(attempt, DiagnosticUnknownAuthorization, "authorization ID is absent from the account history")
 	}
 	if original.Transition.State != domain.AuthorizationApproved || amount.MinorUnits() > original.Transition.Hold.MinorUnits() {
 		return domain.Batch{}, domain.InputOutcome{}, fmt.Errorf("%w: inactive authorization or over-capture", ErrUnsupportedInput)

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"inmemoryaccountledgercore/internal/domain"
+	"inmemoryaccountledgercore/internal/projection"
 )
 
 func appendCloseFixtureEntry(t *testing.T, repository *journal, currency domain.Currency, key domain.RecordKey, minor int64, booking, value domain.Day) {
@@ -26,12 +27,12 @@ func appendCloseFixtureEntry(t *testing.T, repository *journal, currency domain.
 	}}}))
 }
 
-func closingProjection(t *testing.T, repository Repository) *Projection {
+func closingProjection(t *testing.T, repository Repository) *projection.Projection {
 	t.Helper()
 	history := repository.History()
-	projection, err := Rebuild(history, len(history.Records))
+	state, err := projection.Rebuild(history, len(history.Records))
 	require.NoError(t, err)
-	return projection
+	return state
 }
 
 func feeRecords(history domain.History) []domain.Record {
@@ -44,25 +45,29 @@ func feeRecords(history domain.History) []domain.Record {
 	return records
 }
 
+func isFee(kind domain.EntryKind) bool {
+	return kind == domain.EntryFeeAssessment || kind == domain.EntryFeeRefund || kind == domain.EntryFeeAdjustment
+}
+
 func requireClosingState(t *testing.T, repository Repository, balances, accruals []int64) {
 	t.Helper()
-	projection := closingProjection(t, repository)
-	unpaid, err := projection.UnpaidAccruals("ACC-001")
+	state := closingProjection(t, repository)
+	unpaid, err := state.UnpaidAccruals("ACC-001")
 	require.NoError(t, err)
 	require.Len(t, unpaid, len(accruals))
 	for i, want := range balances {
 		day := domain.Day(i + 1)
-		balance, err := projection.Balance("ACC-001", day, BalanceOptions{})
+		balance, err := state.Balance("ACC-001", day, projection.BalanceOptions{})
 		require.NoError(t, err)
 		assert.Equal(t, want, balance.MinorUnits(), "Day %d balance", day)
-		available, err := projection.AvailableBalance("ACC-001", day)
+		available, err := state.AvailableBalance("ACC-001", day)
 		require.NoError(t, err)
 		assert.Equal(t, balance, available, "unpaid accrual is not spendable")
 		if i < len(accruals) {
-			accrual, exists := projection.Accrual("ACC-001", day)
+			accrual, exists := state.Accrual("ACC-001", day)
 			require.True(t, exists)
 			assert.Equal(t, accruals[i], accrual.MinorUnits(), "Day %d accrual", day)
-			assert.Equal(t, DailyAccrual{Day: day, Amount: accrual}, unpaid[i])
+			assert.Equal(t, projection.DailyAccrual{Day: day, Amount: accrual}, unpaid[i])
 		}
 	}
 }
@@ -86,8 +91,8 @@ func TestChronologicalClosingAndAccrualRestoration(t *testing.T) {
 	require.NoError(t, core.ReconcileClosedDays(input.AccountID, 2, 5, "E7"))
 	assert.Equal(t, before.Records, repository.History().Records[:len(before.Records)])
 	requireClosingState(t, repository, []int64{25000, -39500, 500, -20500, -20500}, []int64{10, 0, 0, 0})
-	projection := closingProjection(t, repository)
-	_, exists := projection.Accrual(input.AccountID, 5)
+	state := closingProjection(t, repository)
+	_, exists := state.Accrual(input.AccountID, 5)
 	assert.False(t, exists, "reconciliation does not close open Day 5")
 	fees := feeRecords(repository.History())
 	require.Len(t, fees, 2)
@@ -254,7 +259,7 @@ func TestClosingValidationAndAtomicFailures(t *testing.T) {
 		cause     domain.RecordKey
 		want      error
 	}{
-		{"unknown account", "missing", 1, 1, "cause", ErrUnknownAccount},
+		{"unknown account", "missing", 1, 1, "cause", projection.ErrUnknownAccount},
 		{"nonpositive day", "ACC-001", 0, 1, "cause", ErrInvalidReconciliation},
 		{"missing booking day", "ACC-001", 1, 0, "cause", ErrInvalidReconciliation},
 		{"missing cause", "ACC-001", 1, 1, "", ErrInvalidReconciliation},
@@ -343,11 +348,11 @@ func TestClosingScheduleIsSuppliedByCaller(t *testing.T) {
 			assert.Equal(t, day, fees[0].Entry.ValueDay)
 			assert.Equal(t, day, fees[0].Entry.BookingDay)
 			requireBalance(t, repository, input.AccountID, day, -2501)
-			projection := closingProjection(t, repository)
-			days, err := projection.ClosedDays(input.AccountID)
+			state := closingProjection(t, repository)
+			days, err := state.ClosedDays(input.AccountID)
 			require.NoError(t, err)
 			assert.Equal(t, []domain.Day{day}, days)
-			accrual, exists := projection.Accrual(input.AccountID, day)
+			accrual, exists := state.Accrual(input.AccountID, day)
 			require.True(t, exists)
 			assert.Zero(t, accrual.MinorUnits())
 

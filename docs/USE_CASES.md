@@ -1,12 +1,12 @@
 # Ledger use cases
 
 Status: verification scenarios; full replay tests remain planned. Business
-expectations come from [SPEC](SPEC.md); technical checks follow the proposed
+expectations come from [SPEC](SPEC.md); technical checks follow the
 [DESIGN](DESIGN.md). This catalog maps specified behavior to verification scenarios.
 [TASK](TASK.md) remains the canonical input. Scenario IDs are labels, not new
 constants; amounts and boundary fixtures use [NUMBERS](../NUMBERS.md).
 
-P04 [projection tests](../internal/ledger/projection_test.go) cover H01, H02,
+P04 [projection tests](../internal/projection/projection_test.go) cover H01, H02,
 H05, X01, and X11 with direct recorded-history fixtures, including overflow,
 corrected unpaid accruals, and preserved authorization outcomes. They do not
 execute input processing or reconciliation; those integration checks remain
@@ -15,7 +15,10 @@ scheduled in [the implementation plan](IMPLEMENTATION_PLAN.md).
 P07 [reversal](../internal/ledger/corrections_test.go) and
 [instalment](../internal/ledger/instalments_test.go) unit tests plus
 [posting integration](../tests/replay/corrections_test.go) cover H05/H06's
-principal postings, U04 duplicates, and X06's principal-correction idempotence.
+principal postings and U04 duplicates.
+[Correction-builder tests](../internal/posting/corrections_test.go) cover X06's
+principal-correction idempotence; [allocation tests](../internal/posting/allocation_test.go)
+retain the exact conserving-allocation oracles.
 P08 [closing tests](../internal/ledger/closing_test.go) cover H04/H05's fee and
 accrual oracle using controlled principal fixtures, H09's configured policies,
 X03's unpaid rounded interest, X05's own-fee exclusion and earlier-fee carry,

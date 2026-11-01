@@ -1,4 +1,4 @@
-package ledger_test
+package projection_test
 
 import (
 	"math"
@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"inmemoryaccountledgercore/internal/domain"
-	"inmemoryaccountledgercore/internal/ledger"
+	"inmemoryaccountledgercore/internal/projection"
 )
 
 // Direct history fixtures record effects, not processing implementations. TASK
@@ -56,11 +56,11 @@ func projectionHistory(t *testing.T) domain.History {
 	}}
 }
 
-func observeThrough(t *testing.T, history domain.History, key domain.RecordKey) *ledger.Projection {
+func observeThrough(t *testing.T, history domain.History, key domain.RecordKey) *projection.Projection {
 	t.Helper()
-	projection, err := ledger.Rebuild(history, recordCountThrough(t, history, key))
+	state, err := projection.Rebuild(history, recordCountThrough(t, history, key))
 	require.NoError(t, err)
-	return projection
+	return state
 }
 
 func recordCountThrough(t *testing.T, history domain.History, key domain.RecordKey) int {
@@ -79,37 +79,37 @@ func TestBalanceObservations(t *testing.T) {
 	for _, tc := range []struct {
 		checkpoint domain.RecordKey
 		day        domain.Day
-		options    ledger.BalanceOptions
+		options    projection.BalanceOptions
 		want       int64
 	}{
-		{"E2", 1, ledger.BalanceOptions{}, 25000},
-		{"E4", 2, ledger.BalanceOptions{}, 25000}, // Future value day excluded.
-		{"E4", 3, ledger.BalanceOptions{}, 65000},
-		{"close/4", 4, ledger.BalanceOptions{}, 46500},
-		{"close/5", 2, ledger.BalanceOptions{ExcludeAllFees: true}, -37000},
-		{"close/5", 2, ledger.BalanceOptions{}, -39500},
-		{"close/5", 2, ledger.BalanceOptions{ExcludeFeeDay: 2}, -37000},
-		{"close/5", 3, ledger.BalanceOptions{}, 500},
-		{"close/5", 4, ledger.BalanceOptions{}, -20500},
-		{"close/5", 4, ledger.BalanceOptions{ExcludeFeeDay: 4}, -18000}, // Earlier fee stays.
-		{"close/5", 5, ledger.BalanceOptions{}, -23000},
-		{"close/5", 5, ledger.BalanceOptions{ExcludeFeeDay: 5}, -20500},
-		{"close/5", 5, ledger.BalanceOptions{ExcludeAllFees: true}, -15500},
-		{"refund/5", 2, ledger.BalanceOptions{}, 25000}, // Booking Day 6 still restores Day 2.
-		{"refund/5", 5, ledger.BalanceOptions{}, 46500},
-		{"close/6", 6, ledger.BalanceOptions{}, 46603},
+		{"E2", 1, projection.BalanceOptions{}, 25000},
+		{"E4", 2, projection.BalanceOptions{}, 25000}, // Future value day excluded.
+		{"E4", 3, projection.BalanceOptions{}, 65000},
+		{"close/4", 4, projection.BalanceOptions{}, 46500},
+		{"close/5", 2, projection.BalanceOptions{ExcludeAllFees: true}, -37000},
+		{"close/5", 2, projection.BalanceOptions{}, -39500},
+		{"close/5", 2, projection.BalanceOptions{ExcludeFeeDay: 2}, -37000},
+		{"close/5", 3, projection.BalanceOptions{}, 500},
+		{"close/5", 4, projection.BalanceOptions{}, -20500},
+		{"close/5", 4, projection.BalanceOptions{ExcludeFeeDay: 4}, -18000}, // Earlier fee stays.
+		{"close/5", 5, projection.BalanceOptions{}, -23000},
+		{"close/5", 5, projection.BalanceOptions{ExcludeFeeDay: 5}, -20500},
+		{"close/5", 5, projection.BalanceOptions{ExcludeAllFees: true}, -15500},
+		{"refund/5", 2, projection.BalanceOptions{}, 25000}, // Booking Day 6 still restores Day 2.
+		{"refund/5", 5, projection.BalanceOptions{}, 46500},
+		{"close/6", 6, projection.BalanceOptions{}, 46603},
 	} {
-		projection := observeThrough(t, history, tc.checkpoint)
-		got, err := projection.Balance("ACC-001", tc.day, tc.options)
+		state := observeThrough(t, history, tc.checkpoint)
+		got, err := state.Balance("ACC-001", tc.day, tc.options)
 		require.NoError(t, err)
 		assert.Equal(t, money(t, canonicalCurrencies(t)[0], tc.want), got, "%s/day %d/%+v", tc.checkpoint, tc.day, tc.options)
 	}
 	before := observeThrough(t, history, "refund/5")
 	after := observeThrough(t, history, "E10/3")
-	got, err := before.Balance("ACC-002", 5, ledger.BalanceOptions{})
+	got, err := before.Balance("ACC-002", 5, projection.BalanceOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), got.MinorUnits())
-	got, err = after.Balance("ACC-002", 5, ledger.BalanceOptions{})
+	got, err = after.Balance("ACC-002", 5, projection.BalanceOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, money(t, canonicalCurrencies(t)[1], 10000), got, "E10 is observed after E9 despite its earlier booking day")
 }
@@ -129,7 +129,7 @@ func TestRecordedHoldsAndAvailability(t *testing.T) {
 		{"refund/5", 5, 46500, 0, 46500, domain.AuthorizationSettled},
 	} {
 		p := observeThrough(t, history, tc.key)
-		balance, err := p.Balance("ACC-001", tc.day, ledger.BalanceOptions{})
+		balance, err := p.Balance("ACC-001", tc.day, projection.BalanceOptions{})
 		require.NoError(t, err)
 		holds, err := p.ActiveHolds("ACC-001")
 		require.NoError(t, err)
@@ -205,7 +205,7 @@ func TestAccrualReplacementAndClosedDays(t *testing.T) {
 
 func TestProjectionOwnsHistoryAndReturnedContainers(t *testing.T) {
 	history := projectionHistory(t)
-	p, err := ledger.Rebuild(history, len(history.Records))
+	p, err := projection.Rebuild(history, len(history.Records))
 	require.NoError(t, err)
 	assert.Equal(t, projectionHistory(t), history, "rebuild does not change source records or decisions")
 	for i := range history.Records {
@@ -214,7 +214,7 @@ func TestProjectionOwnsHistoryAndReturnedContainers(t *testing.T) {
 		}
 		history.Records[i] = domain.Record{}
 	}
-	got, err := p.Balance("ACC-001", 2, ledger.BalanceOptions{})
+	got, err := p.Balance("ACC-001", 2, projection.BalanceOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, int64(25000), got.MinorUnits())
 	days, err := p.ClosedDays("ACC-001")
@@ -252,12 +252,12 @@ func TestFeeNetAndExclusionIncludeRefundsAndAdjustments(t *testing.T) {
 	// Renewed eligibility is represented under the same obligation, after refund.
 	base := history.Records[:recordCountThrough(t, history, "refund/5")]
 	base = append(base, domain.Record{Key: "adjustment/2", Entry: &domain.MonetaryEntry{AccountID: "ACC-001", Amount: money(t, aed, -2500), BookingDay: 6, ValueDay: 2, Kind: domain.EntryFeeAdjustment, FeeObligationID: "fee/ACC-001/2", OriginalEntryKey: "fee/2"}})
-	p, err := ledger.Rebuild(domain.History{Records: base}, len(base))
+	p, err := projection.Rebuild(domain.History{Records: base}, len(base))
 	require.NoError(t, err)
 	net, err := p.FeeNet("ACC-001", 2)
 	require.NoError(t, err)
 	assert.Equal(t, int64(-2500), net.MinorUnits())
-	for _, options := range []ledger.BalanceOptions{{ExcludeAllFees: true}, {ExcludeFeeDay: 2}} {
+	for _, options := range []projection.BalanceOptions{{ExcludeAllFees: true}, {ExcludeFeeDay: 2}} {
 		balance, err := p.Balance("ACC-001", 2, options)
 		require.NoError(t, err)
 		assert.Equal(t, int64(25000), balance.MinorUnits(), "exclude every effect of the obligation together")
@@ -274,19 +274,19 @@ func TestCapitalizationDoesNotEarnSameDayInterest(t *testing.T) {
 		{Key: "close/2", Close: &domain.DayClose{AccountID: "A", Day: 2}},
 		{Key: "close/3", Close: &domain.DayClose{AccountID: "A", Day: 3}},
 	}}
-	p, err := ledger.Rebuild(history, len(history.Records))
+	p, err := projection.Rebuild(history, len(history.Records))
 	require.NoError(t, err)
 	for i, want := range []int64{1, 1, 2} {
 		got, exists := p.Accrual("A", domain.Day(i+1))
 		require.True(t, exists)
 		assert.Equal(t, want, got.MinorUnits())
 	}
-	paidDay, err := p.Balance("A", 2, ledger.BalanceOptions{})
+	paidDay, err := p.Balance("A", 2, projection.BalanceOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, int64(3751), paidDay.MinorUnits())
 	unpaid, err := p.UnpaidAccruals("A")
 	require.NoError(t, err)
-	assert.Equal(t, []ledger.DailyAccrual{{Day: 3, Amount: money(t, aed, 2)}}, unpaid)
+	assert.Equal(t, []projection.DailyAccrual{{Day: 3, Amount: money(t, aed, 2)}}, unpaid)
 }
 
 func TestProjectionBoundariesAndErrors(t *testing.T) {
@@ -300,9 +300,9 @@ func TestProjectionBoundariesAndErrors(t *testing.T) {
 		{Key: "close/1", Close: &domain.DayClose{AccountID: "A", Day: 1}},
 		{Key: "close/1/repeat", Close: &domain.DayClose{AccountID: "A", Day: 1}},
 	}}
-	p, err := ledger.Rebuild(history, len(history.Records))
+	p, err := projection.Rebuild(history, len(history.Records))
 	require.NoError(t, err)
-	balance, err := p.Balance("A", 1, ledger.BalanceOptions{})
+	balance, err := p.Balance("A", 1, projection.BalanceOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), balance.MinorUnits(), "opening money included before first value-dated posting")
 	available, err := p.AvailableBalance("A", 2)
@@ -312,26 +312,26 @@ func TestProjectionBoundariesAndErrors(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []domain.Day{1, 2}, days)
 	for _, count := range []int{-1, len(history.Records) + 1} {
-		got, err := ledger.Rebuild(history, count)
-		require.ErrorIs(t, err, ledger.ErrInvalidObservation)
+		got, err := projection.Rebuild(history, count)
+		require.ErrorIs(t, err, projection.ErrInvalidObservation)
 		assert.Nil(t, got)
 	}
-	empty, err := ledger.Rebuild(history, 0)
+	empty, err := projection.Rebuild(history, 0)
 	require.NoError(t, err)
-	_, err = empty.Balance("A", 1, ledger.BalanceOptions{})
-	require.ErrorIs(t, err, ledger.ErrUnknownAccount)
-	_, err = p.Balance("unknown", 1, ledger.BalanceOptions{})
-	require.ErrorIs(t, err, ledger.ErrUnknownAccount)
+	_, err = empty.Balance("A", 1, projection.BalanceOptions{})
+	require.ErrorIs(t, err, projection.ErrUnknownAccount)
+	_, err = p.Balance("unknown", 1, projection.BalanceOptions{})
+	require.ErrorIs(t, err, projection.ErrUnknownAccount)
 	_, err = p.AvailableBalance("unknown", 1)
-	require.ErrorIs(t, err, ledger.ErrUnknownAccount)
+	require.ErrorIs(t, err, projection.ErrUnknownAccount)
 	_, err = p.ActiveHolds("unknown")
-	require.ErrorIs(t, err, ledger.ErrUnknownAccount)
+	require.ErrorIs(t, err, projection.ErrUnknownAccount)
 	_, err = p.FeeNet("unknown", 1)
-	require.ErrorIs(t, err, ledger.ErrUnknownAccount)
+	require.ErrorIs(t, err, projection.ErrUnknownAccount)
 	_, err = p.ClosedDays("unknown")
-	require.ErrorIs(t, err, ledger.ErrUnknownAccount)
+	require.ErrorIs(t, err, projection.ErrUnknownAccount)
 	_, err = p.UnpaidAccruals("unknown")
-	require.ErrorIs(t, err, ledger.ErrUnknownAccount)
+	require.ErrorIs(t, err, projection.ErrUnknownAccount)
 }
 
 func TestProjectionArithmeticFailures(t *testing.T) {
@@ -361,18 +361,18 @@ func TestProjectionArithmeticFailures(t *testing.T) {
 			{Key: "foreign", Entry: &domain.MonetaryEntry{AccountID: "A", ValueDay: 1, Amount: money(t, bhd, 1)}},
 			{Key: "close", Close: &domain.DayClose{AccountID: "A", Day: 1}},
 		}, domain.ErrCurrencyMismatch},
-		{"unknown posting account", []domain.Record{{Key: "entry", Entry: &domain.MonetaryEntry{AccountID: "unknown", Amount: money(t, aed, 1)}}}, ledger.ErrUnknownAccount},
-		{"unknown close account", []domain.Record{{Key: "close", Close: &domain.DayClose{AccountID: "unknown", Day: 1}}}, ledger.ErrUnknownAccount},
-		{"unknown hold account", []domain.Record{{Key: "hold", Authorization: &domain.AuthorizationTransition{AccountID: "unknown", State: domain.AuthorizationApproved, Hold: money(t, aed, 1)}}}, ledger.ErrUnknownAccount},
+		{"unknown posting account", []domain.Record{{Key: "entry", Entry: &domain.MonetaryEntry{AccountID: "unknown", Amount: money(t, aed, 1)}}}, projection.ErrUnknownAccount},
+		{"unknown close account", []domain.Record{{Key: "close", Close: &domain.DayClose{AccountID: "unknown", Day: 1}}}, projection.ErrUnknownAccount},
+		{"unknown hold account", []domain.Record{{Key: "hold", Authorization: &domain.AuthorizationTransition{AccountID: "unknown", State: domain.AuthorizationApproved, Hold: money(t, aed, 1)}}}, projection.ErrUnknownAccount},
 		{"unknown authorization account precedes later fee overflow", []domain.Record{
 			{Key: "hold", Authorization: &domain.AuthorizationTransition{AccountID: "unknown", State: domain.AuthorizationDeclined, Hold: money(t, aed, 1)}},
 			{Key: "fee/1", Entry: &domain.MonetaryEntry{AccountID: "A", ValueDay: 1, Kind: domain.EntryFeeAssessment, Amount: money(t, aed, math.MinInt64)}},
 			{Key: "fee/adjust", Entry: &domain.MonetaryEntry{AccountID: "A", ValueDay: 1, Kind: domain.EntryFeeAdjustment, Amount: money(t, aed, -1)}},
-		}, ledger.ErrUnknownAccount},
+		}, projection.ErrUnknownAccount},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			history := domain.History{Records: append([]domain.Record{account}, tc.records...)}
-			got, err := ledger.Rebuild(history, len(history.Records))
+			got, err := projection.Rebuild(history, len(history.Records))
 			require.ErrorIs(t, err, tc.wantErr)
 			assert.Nil(t, got, "no partial derived state escapes")
 		})
@@ -383,18 +383,34 @@ func TestProjectionArithmeticFailures(t *testing.T) {
 		{Key: "minimum", Entry: &domain.MonetaryEntry{AccountID: "A", ValueDay: 1, Amount: money(t, aed, math.MinInt64)}},
 		{Key: "hold", Authorization: &domain.AuthorizationTransition{AccountID: "A", AuthorizationID: "one", State: domain.AuthorizationApproved, Hold: money(t, aed, 1)}},
 	}}
-	p, err := ledger.Rebuild(history, len(history.Records))
+	p, err := projection.Rebuild(history, len(history.Records))
 	require.NoError(t, err)
 	got, err := p.AvailableBalance("A", 1)
 	require.ErrorIs(t, err, domain.ErrArithmeticOverflow)
 	assert.Equal(t, domain.Money{}, got)
 	history.Records = append(history.Records, domain.Record{Key: "minus", Entry: &domain.MonetaryEntry{AccountID: "A", ValueDay: 1, Amount: money(t, aed, -1)}})
-	p, err = ledger.Rebuild(history, len(history.Records))
+	p, err = projection.Rebuild(history, len(history.Records))
 	require.NoError(t, err)
-	got, err = p.Balance("A", 1, ledger.BalanceOptions{})
+	got, err = p.Balance("A", 1, projection.BalanceOptions{})
 	require.ErrorIs(t, err, domain.ErrArithmeticOverflow)
 	assert.Equal(t, domain.Money{}, got)
 	got, err = p.AvailableBalance("A", 1)
 	require.ErrorIs(t, err, domain.ErrArithmeticOverflow)
 	assert.Equal(t, domain.Money{}, got)
+}
+
+func money(t *testing.T, currency domain.Currency, minor int64) domain.Money {
+	t.Helper()
+	m, err := domain.NewMoney(currency, minor)
+	require.NoError(t, err)
+	return m
+}
+
+func canonicalCurrencies(t *testing.T) []domain.Currency {
+	t.Helper()
+	aed, err := domain.NewCurrency("AED", 2)
+	require.NoError(t, err)
+	bhd, err := domain.NewCurrency("BHD", 3)
+	require.NoError(t, err)
+	return []domain.Currency{aed, bhd}
 }

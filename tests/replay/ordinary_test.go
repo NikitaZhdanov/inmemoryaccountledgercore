@@ -8,6 +8,8 @@ import (
 
 	"inmemoryaccountledgercore/internal/domain"
 	"inmemoryaccountledgercore/internal/ledger"
+	"inmemoryaccountledgercore/internal/posting"
+	"inmemoryaccountledgercore/internal/projection"
 	"inmemoryaccountledgercore/internal/repository/memory"
 )
 
@@ -45,12 +47,12 @@ func TestOrdinaryPostings(t *testing.T) {
 		assert.Equal(t, domain.OutcomeAccepted, outcome.Status)
 		history := repository.History()
 		assert.Equal(t, tc.input, history.Records[start].Attempt.Input)
-		projection, err := ledger.Rebuild(history, len(history.Records))
+		state, err := projection.Rebuild(history, len(history.Records))
 		require.NoError(t, err)
-		balance, err := projection.Balance("ACC-001", tc.input.ValueDay, ledger.BalanceOptions{})
+		balance, err := state.Balance("ACC-001", tc.input.ValueDay, projection.BalanceOptions{})
 		require.NoError(t, err)
 		assert.Equal(t, tc.want, balance.MinorUnits())
-		balance, err = projection.Balance("ACC-002", tc.input.ValueDay, ledger.BalanceOptions{})
+		balance, err = state.Balance("ACC-002", tc.input.ValueDay, projection.BalanceOptions{})
 		require.NoError(t, err)
 		assert.Equal(t, bhdZero, balance)
 		before := repository.History()
@@ -60,6 +62,6 @@ func TestOrdinaryPostings(t *testing.T) {
 		after := repository.History()
 		require.Len(t, after.Records, len(before.Records)+3)
 		assert.Equal(t, before.Records, after.Records[:len(before.Records)])
-		assert.Equal(t, ledger.DiagnosticDuplicateID, after.Records[len(after.Records)-1].Diagnostic.Code)
+		assert.Equal(t, posting.DiagnosticDuplicateID, after.Records[len(after.Records)-1].Diagnostic.Code)
 	}
 }

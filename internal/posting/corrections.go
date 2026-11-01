@@ -1,4 +1,4 @@
-package ledger
+package posting
 
 import (
 	"errors"
@@ -43,8 +43,7 @@ func reversalBatch(history domain.History, attempt domain.InputAttempt) (domain.
 	}
 	correction, err := principalCorrection(history, attempt, original)
 	if errors.Is(err, errAlreadyReversed) {
-		batch, outcome := buildRejectionBatch(attempt, DiagnosticAlreadyReversed, err.Error())
-		return batch, outcome, nil
+		return buildRejectionBatch(attempt, DiagnosticAlreadyReversed, err.Error())
 	}
 	if err != nil {
 		return domain.Batch{}, domain.InputOutcome{}, err
@@ -57,7 +56,7 @@ func reversalBatch(history domain.History, attempt domain.InputAttempt) (domain.
 
 // principalCorrection constructs only the financial effect. Repeating the same
 // recorded cause returns no records; submitting the input again is handled by
-// Submit's duplicate rejection before this helper runs. Identity derives from
+// Prepare's duplicate rejection before this helper runs. Identity derives from
 // the original entry, independently of the correction's input ID. A different
 // attempt for an already reversed debit returns the business errAlreadyReversed.
 func principalCorrection(history domain.History, attempt domain.InputAttempt, original domain.Record) (domain.Batch, error) {

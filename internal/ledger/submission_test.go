@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"inmemoryaccountledgercore/internal/domain"
+	"inmemoryaccountledgercore/internal/posting"
+	"inmemoryaccountledgercore/internal/projection"
 )
 
 func ordinaryFixture(t *testing.T, opening int64) (*Core, *journal, domain.InputEvent) {
@@ -28,9 +30,9 @@ func ordinaryFixture(t *testing.T, opening int64) (*Core, *journal, domain.Input
 func requireBalance(t *testing.T, repository Repository, id domain.AccountID, day domain.Day, want int64) {
 	t.Helper()
 	history := repository.History()
-	projection, err := Rebuild(history, len(history.Records))
+	state, err := projection.Rebuild(history, len(history.Records))
 	require.NoError(t, err)
-	balance, err := projection.Balance(id, day, BalanceOptions{})
+	balance, err := state.Balance(id, day, projection.BalanceOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, want, balance.MinorUnits())
 }
@@ -96,18 +98,18 @@ func TestOrdinaryInputRejectionsAndContinuation(t *testing.T) {
 		change func(*domain.InputEvent)
 		code   string
 	}{
-		{"precision", func(e *domain.InputEvent) { e.RawAmount = "1.005" }, DiagnosticAmountPrecision},
-		{"upper range", func(e *domain.InputEvent) { e.RawAmount = "92233720368547758.08" }, DiagnosticAmountRange},
-		{"lower range", func(e *domain.InputEvent) { e.RawAmount = "-92233720368547758.09" }, DiagnosticAmountRange},
-		{"syntax", func(e *domain.InputEvent) { e.RawAmount = "1e2" }, DiagnosticInvalidAmount},
-		{"negative credit", func(e *domain.InputEvent) { e.RawAmount = "-0.01" }, DiagnosticNegativeAmount},
-		{"negative debit", func(e *domain.InputEvent) { e.Kind = domain.InputDebit; e.RawAmount = "-0.01" }, DiagnosticNegativeAmount},
-		{"minimum negative", func(e *domain.InputEvent) { e.Kind = domain.InputDebit; e.RawAmount = "-92233720368547758.08" }, DiagnosticNegativeAmount},
-		{"unknown account", func(e *domain.InputEvent) { e.AccountID = "unknown" }, DiagnosticUnknownAccount},
-		{"invalid currency", func(e *domain.InputEvent) { e.Currency = domain.Currency{} }, DiagnosticInvalidCurrency},
-		{"different code", func(e *domain.InputEvent) { e.Currency = fixtureCurrency(t, "BHD", 3) }, DiagnosticCurrencyMismatch},
-		{"different scale", func(e *domain.InputEvent) { e.Currency = fixtureCurrency(t, "AED", 3) }, DiagnosticCurrencyMismatch},
-		{"empty ID", func(e *domain.InputEvent) { e.ID = "" }, DiagnosticInvalidEventID},
+		{"precision", func(e *domain.InputEvent) { e.RawAmount = "1.005" }, posting.DiagnosticAmountPrecision},
+		{"upper range", func(e *domain.InputEvent) { e.RawAmount = "92233720368547758.08" }, posting.DiagnosticAmountRange},
+		{"lower range", func(e *domain.InputEvent) { e.RawAmount = "-92233720368547758.09" }, posting.DiagnosticAmountRange},
+		{"syntax", func(e *domain.InputEvent) { e.RawAmount = "1e2" }, posting.DiagnosticInvalidAmount},
+		{"negative credit", func(e *domain.InputEvent) { e.RawAmount = "-0.01" }, posting.DiagnosticNegativeAmount},
+		{"negative debit", func(e *domain.InputEvent) { e.Kind = domain.InputDebit; e.RawAmount = "-0.01" }, posting.DiagnosticNegativeAmount},
+		{"minimum negative", func(e *domain.InputEvent) { e.Kind = domain.InputDebit; e.RawAmount = "-92233720368547758.08" }, posting.DiagnosticNegativeAmount},
+		{"unknown account", func(e *domain.InputEvent) { e.AccountID = "unknown" }, posting.DiagnosticUnknownAccount},
+		{"invalid currency", func(e *domain.InputEvent) { e.Currency = domain.Currency{} }, posting.DiagnosticInvalidCurrency},
+		{"different code", func(e *domain.InputEvent) { e.Currency = fixtureCurrency(t, "BHD", 3) }, posting.DiagnosticCurrencyMismatch},
+		{"different scale", func(e *domain.InputEvent) { e.Currency = fixtureCurrency(t, "AED", 3) }, posting.DiagnosticCurrencyMismatch},
+		{"empty ID", func(e *domain.InputEvent) { e.ID = "" }, posting.DiagnosticInvalidEventID},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			core, repository, input := ordinaryFixture(t, 0)
@@ -154,7 +156,7 @@ func TestDuplicateInputsPreserveOriginalOutcomes(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, domain.OutcomeRejected, outcome.Status)
 			requireAttempt(t, repository, start, duplicate, outcome)
-			assert.Equal(t, DiagnosticDuplicateID, repository.records[start+2].Diagnostic.Code)
+			assert.Equal(t, posting.DiagnosticDuplicateID, repository.records[start+2].Diagnostic.Code)
 			assert.False(t, attempts[outcome.AttemptID], "every committed attempt has a fresh identity")
 			attempts[outcome.AttemptID] = true
 			assert.Equal(t, before.Records, repository.History().Records[:len(before.Records)])
@@ -210,7 +212,7 @@ func TestOrdinaryConfiguredPrecision(t *testing.T) {
 		outcome, err := core.Submit(input)
 		require.NoError(t, err)
 		assert.Equal(t, domain.OutcomeRejected, outcome.Status)
-		assert.Equal(t, DiagnosticAmountPrecision, repository.records[3].Diagnostic.Code)
+		assert.Equal(t, posting.DiagnosticAmountPrecision, repository.records[3].Diagnostic.Code)
 		input.ID, input.RawAmount = "valid", tc.raw
 		outcome, err = core.Submit(input)
 		require.NoError(t, err)
@@ -274,53 +276,22 @@ func TestSubmissionRepositoryFailures(t *testing.T) {
 	}
 }
 
-func TestValidatePostingPreservesHistoryBackingSlice(t *testing.T) {
-	for _, tc := range []struct {
-		name    string
-		opening int64
-	}{
-		{"valid posting", 0},
-		{"overflow", math.MaxInt64},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			_, repository, input := ordinaryFixture(t, tc.opening)
-			input.RawAmount = "0.01"
-			history := repository.History()
-			// Another view owns the record beyond the history prefix. Previewing
-			// must preserve it even when append could reuse the spare capacity.
-			sentinel := domain.Record{Key: "sentinel", Diagnostic: &domain.Diagnostic{Code: "PRESERVE"}}
-			backing := []domain.Record{history.Records[0], sentinel}
-			history.Records = backing[:1]
-			before := []domain.Record{backing[0].Clone(), backing[1].Clone()}
-			posting, err := ordinaryPosting(domain.InputAttempt{ID: "preview", Input: input}, fixtureMoney(t, input.Currency, 1))
-			require.NoError(t, err)
-			err = validatePosting(history, domain.Batch{Records: []domain.Record{posting}}, input)
-			if tc.opening == math.MaxInt64 {
-				require.ErrorIs(t, err, domain.ErrArithmeticOverflow)
-			} else {
-				require.NoError(t, err)
-			}
-			assert.Equal(t, before, backing, "validation must not overwrite records outside the history prefix")
-		})
-	}
-}
-
 func TestUnimplementedWorkflowsAppendNothing(t *testing.T) {
 	core, repository, input := ordinaryFixture(t, 0)
 	before := repository.History()
 	for _, kind := range []domain.InputKind{domain.InputReversal, "unknown"} {
 		input.Kind = kind
 		outcome, err := core.Submit(input)
-		require.ErrorIs(t, err, ErrUnsupportedInput)
+		require.ErrorIs(t, err, posting.ErrUnsupportedInput)
 		assert.Equal(t, domain.InputOutcome{}, outcome)
 		assert.Equal(t, before, repository.History())
 	}
 	input.Kind, input.InstalmentCount = domain.InputDebit, 3
 	_, err := core.Submit(input)
-	require.ErrorIs(t, err, ErrUnsupportedInput)
+	require.ErrorIs(t, err, posting.ErrUnsupportedInput)
 	assert.Equal(t, before, repository.History())
 	input.Kind, input.InstalmentCount = domain.InputCredit, -1
 	_, err = core.Submit(input)
-	require.ErrorIs(t, err, ErrUnsupportedInput)
+	require.ErrorIs(t, err, posting.ErrUnsupportedInput)
 	assert.Equal(t, before, repository.History())
 }

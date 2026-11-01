@@ -8,6 +8,8 @@ import (
 
 	"inmemoryaccountledgercore/internal/domain"
 	"inmemoryaccountledgercore/internal/ledger"
+	"inmemoryaccountledgercore/internal/posting"
+	"inmemoryaccountledgercore/internal/projection"
 	"inmemoryaccountledgercore/internal/repository/memory"
 )
 
@@ -85,7 +87,7 @@ func TestLinkedReversalAndLateInstalments(t *testing.T) {
 		}
 	}
 	history := repository.History()
-	projection, err := ledger.Rebuild(history, len(history.Records))
+	state, err := projection.Rebuild(history, len(history.Records))
 	require.NoError(t, err)
 	for _, tc := range []struct {
 		id   domain.AccountID
@@ -96,7 +98,7 @@ func TestLinkedReversalAndLateInstalments(t *testing.T) {
 		{"ACC-001", 4, 46500}, {"ACC-001", 5, 46500}, {"ACC-001", 6, 46500},
 		{"ACC-002", 4, 0}, {"ACC-002", 5, 10000}, {"ACC-002", 6, 10000},
 	} {
-		balance, err := projection.Balance(tc.id, tc.day, ledger.BalanceOptions{})
+		balance, err := state.Balance(tc.id, tc.day, projection.BalanceOptions{})
 		require.NoError(t, err)
 		assert.Equal(t, tc.want, balance.MinorUnits())
 	}
@@ -120,10 +122,10 @@ func TestLinkedReversalAndLateInstalments(t *testing.T) {
 	diagnostic := recorded.Records[len(recorded.Records)-1]
 	require.NotNil(t, diagnostic.Diagnostic)
 	assert.Equal(t, rejected.DiagnosticKey, diagnostic.Key)
-	assert.Equal(t, ledger.DiagnosticAlreadyReversed, diagnostic.Diagnostic.Code)
-	projection, err = ledger.Rebuild(recorded, len(recorded.Records))
+	assert.Equal(t, posting.DiagnosticAlreadyReversed, diagnostic.Diagnostic.Code)
+	state, err = projection.Rebuild(recorded, len(recorded.Records))
 	require.NoError(t, err)
-	balance, err := projection.Balance("ACC-001", 6, ledger.BalanceOptions{})
+	balance, err := state.Balance("ACC-001", 6, projection.BalanceOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, int64(46500), balance.MinorUnits())
 }
