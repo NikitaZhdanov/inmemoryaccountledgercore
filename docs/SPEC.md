@@ -204,8 +204,9 @@ implementation, when it can expose a genuine design limitation; no assertion or
 expected result is preselected. Explain what it reveals inline, preserve its
 failure, isolate it from the passing normal suite, document its exact command,
 and record its observed nonzero result. Money unit tests exist under P01;
-ledger/replay tests and the required failing test remain pending. README records
-current runtime/dependencies and test commands; add replay instructions when built.
+ledger/replay tests and the required failing test remain pending. README links
+to [DEVELOPMENT](DEVELOPMENT.md) for runtime/dependency details and test commands;
+add replay instructions when built.
 Preserve intact commit history without squashing.
 
 Extra workflows—authorizations with differing booking/value dates, explicit
