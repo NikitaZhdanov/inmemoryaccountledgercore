@@ -1,82 +1,46 @@
-# inmemoryaccountledgercore
+# In-Memory Account Ledger Core
 
-P01 is implemented: exact AED/BHD money values and checked arithmetic in
-[`internal/domain`](internal/domain/money.go), with adjacent unit tests. The ledger
-and replay/report are still pending P02–P14.
+An in-memory ledger for value-dated account balances, authorizations, fees, and
+daily interest, using exact monetary arithmetic.
 
-- [Original assignment](docs/TASK.md)
-- [Behavioral specification and output semantics](docs/SPEC.md)
-- [Proposed Go technical design](docs/DESIGN.md)
-- [Use cases and scenario coverage](docs/USE_CASES.md)
-- [Ordered implementation tasks and completion checks](docs/IMPLEMENTATION_PLAN.md)
-- [Decision rationale and unspecified extensions](AMBIGUITIES.md)
-- [Numerical justifications and expected results](NUMBERS.md)
-- [Acceptance-criterion review](REJECTED.md)
-- [Actual milestones](WORKLOG.md)
-- [Repository instructions](AGENTS.md)
+Exact AED/BHD money values and checked arithmetic are implemented; ledger
+processing and replay reporting remain planned.
 
-Use Go 1.23.1 or newer; implementation was checked with `go1.23.1 darwin/amd64`.
-The module baseline is `go 1.23.1`. Production code uses only the Go standard
-library; unit tests use pinned [Testify](https://github.com/stretchr/testify)
-`assert` and `require` with Go's `testing` runner. Module dependencies and checksums
-are recorded in [go.mod](go.mod) and [go.sum](go.sum). The first test run needs
-network access to download test dependencies; no services or configuration are
-needed. From the repository root, run:
+## Requirements
+
+Go 1.23.1 or newer, plus Make for the shortcuts below. Tests download their
+dependencies on first use. See [Development](docs/DEVELOPMENT.md#requirements)
+for full-check requirements.
+
+## Quick start
+
+From the repository root:
 
 ```sh
-go test ./internal/domain
 go test ./...
 go vet ./...
 ```
 
-The first command runs the money unit tests; the second runs all currently
-implemented tests. Successful tests print `ok`; `go vet` is silent on success.
-The tests use literal expected amounts and exercise currency scales, exact
-parsing/formatting, signed endpoints, cross-currency rejection, and overflow of
-each arithmetic operation, including intermediate accumulation.
+Tests print `ok` on success; vet is silent when it finds no issues.
 
-The [Makefile](Makefile) provides the same commands locally and in
-[GitHub Actions](.github/workflows/go.yml). For the complete development checks,
-use current stable Go, Make, and a C compiler with CGO enabled for race detection.
-The pinned analyzers require Go 1.26 or newer; Go may download a newer toolchain
-automatically when building them. Their versions are recorded in Makefile and
-their dependencies stay outside the application module. Analyzer/toolchain downloads
-and module metadata lookups need network access, including some cached invocations;
-vulnerability scans also query the Go vulnerability database. Existing Go 1.23.1
-remains sufficient for the ordinary core tests above. Local `make check` and
-`make ci` were verified with `GOTOOLCHAIN=go1.27.3`.
+## Main Make targets
 
-| Command | Checks or output |
+| Command | Purpose |
 | --- | --- |
-| `make` / `make check` | Formatting check, build, vet, Staticcheck lint, normal tests |
-| `make ci` | Formatting check, build, vet, lint, uncached race tests/coverage, vulnerability scan |
-| `make fmt` / `make fmt-check` | Format all Go files / reject unformatted files without changing them |
-| `make test` / `make test-race` | Normal tests / uncached race tests writing ignored `coverage.out` |
-| `make coverage` | Run race tests, then print per-function coverage; no minimum percentage enforced |
-| `make build` / `make vet` | Build packages / run Go's static analyzer |
-| `make lint` | Run pinned [Staticcheck](https://staticcheck.dev/docs/getting-started/) |
-| `make vuln` | Run pinned [govulncheck](https://go.dev/doc/security/vuln/) against the selected Go toolchain and dependencies, including tests |
-| `make help` | List targets |
+| `make test` | Run normal tests |
+| `make check` (default) | Check formatting, build, vet, lint, and test |
+| `make ci` | Run full checks, including race tests, coverage, and vulnerabilities |
+| `make fmt` | Format Go files |
+| `make coverage` | Run race tests and print per-function coverage |
+| `make help` | List all targets |
 
-The workflow runs one Linux job on current stable Go for pushes, pull requests,
-manual dispatch, and weekly Monday checks. It calls `make ci`, caches Go modules
-and builds using `go.mod`/`go.sum`, and uses read-only repository permissions. Weekly
-[Dependabot](.github/dependabot.yml) updates maintain release-SHA pins for the
-two official GitHub Actions; analyzer pins are updated explicitly in Makefile.
-Vulnerability findings can originate in the selected compiler's standard library;
-upgrade that toolchain when indicated by the scan. See
-[A12](AMBIGUITIES.md#a12--lightweight-development-checks) for these technical choices.
+## Documentation
 
-`domain.ParseMoney` accepts ASCII fixed-point text with an optional sign. It
-accepts redundant fractional zeros and rejects nonzero excess precision without
-rounding. `NewMoney` takes signed `int64` minor units. `Format` prints the exact
-currency scale. `Add`, `Sub`, `Neg`, and `Sum` check overflow; `errors.Is` can
-distinguish input range/precision errors from derived arithmetic overflow. See
-[A9](AMBIGUITIES.md#a9--currency-precision-and-instalments) for the API choices.
-
-`go run ./cmd/replay` and `go test ./tests/replay` are future commands; those
-packages do not exist yet. The future report semantics are in [SPEC](docs/SPEC.md#reporting-and-observations).
-The required intentional failing test is deferred to P13, where a genuine design
-limitation will be investigated. Its planned isolated command is
-`go test -tags designlimitation ./...`. The tagged test remains pending.
-Normal Make/CI targets keep that build tag disabled when the test is added later.
+- **Development:** [Setup, tooling, and CI](docs/DEVELOPMENT.md),
+  [Design and money API](docs/DESIGN.md), [Implementation plan](docs/IMPLEMENTATION_PLAN.md),
+  [Repository guidelines](AGENTS.md).
+- **Behavior:** [Assignment](docs/TASK.md), [Specification](docs/SPEC.md),
+  [Use cases](docs/USE_CASES.md).
+- **Decision records:** [Ambiguities and resolutions](AMBIGUITIES.md),
+  [Numerical inventory](NUMBERS.md), [Acceptance-criterion review](REJECTED.md),
+  [Worklog](WORKLOG.md).

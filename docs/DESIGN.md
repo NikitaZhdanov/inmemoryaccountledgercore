@@ -23,7 +23,7 @@ pinned development tools, invoked outside application module dependencies.
 CI uses current stable Go;
 the core module baseline remains Go 1.23.1. See
 [A12](../AMBIGUITIES.md#a12--lightweight-development-checks) for tooling choices
-and README for exact commands and runtime/network requirements.
+and [DEVELOPMENT](DEVELOPMENT.md) for exact commands and runtime/network requirements.
 
 Store money as `int64` minor units paired with currency, in a small value type.
 This replaces the initial `big.Int` proposal with simpler value semantics.
@@ -48,6 +48,23 @@ money directly from integers at the currency's scale, including the minimum
 signed value without negating it. Division by the rate denominator avoids a
 potentially overflowing balance-times-rate intermediate. No decimal context,
 tolerance, or intermediate floating point is needed.
+
+## Money API
+
+The implemented [domain package](../internal/domain/money.go) exposes:
+
+- `ParseMoney(currency, raw)` for exact ASCII fixed-point parsing with an optional
+  sign. Redundant fractional zeros are accepted; nonzero excess precision rejects
+  without rounding. Future input records will retain the original text separately.
+- `NewMoney(currency, minor)` for signed `int64` minor units in a supported currency.
+- `Currency()` and `MinorUnits()` for reading a money value, and `Format()` for
+  fixed-point amount text at that currency's scale.
+- `Add`, `Sub`, `Neg`, and `Sum` for checked arithmetic. Use `errors.Is` to
+  distinguish input range/precision errors from derived arithmetic overflow.
+
+The Go zero value has no valid currency. Constructor validation, parsing grammar,
+and ordered-accumulation behavior are recorded in
+[A9](../AMBIGUITIES.md#a9--currency-precision-and-instalments).
 
 ## Small code layout
 
@@ -214,7 +231,8 @@ Its assertion remains deferred under [A11](../AMBIGUITIES.md#a11--required-faili
 Use expectations justified by the property under test; expected-failure wrappers
 would prevent the required nonzero result.
 
-At implementation time, publish exact setup/run/output instructions in README,
-inventory any additional constants/test parameters, and log actual check results.
+Keep README's quick start current and publish detailed setup/run/output
+instructions in [DEVELOPMENT](DEVELOPMENT.md). Inventory additional constants/test
+parameters and log actual check results.
 Unspecified authorization extensions remain outside scope; no new business policy
 is introduced here. Preserve intact commit history without squashing.

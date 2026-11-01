@@ -266,7 +266,8 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   Extend `tests/replay` with end-to-end report assertions.
   Include every day/account, closing ledger balance, linked fee history with
   booking/value days, recorded authorization states, and errors/decision reasons.
-  Publish the now-runnable replay command and output interpretation in README.
+  Publish the runnable replay command in README and detailed output interpretation
+  in [DEVELOPMENT](DEVELOPMENT.md).
 - **Dependencies:** P11.
 - **Use cases:** H08, X01, X04, X06; report outcomes from H01–H07, U01, U02.
 - **Completion checks:** `go run ./cmd/replay` succeeds. Repeated fresh runs print
@@ -317,7 +318,8 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   and end-to-end tests are separate in `tests/replay`; document their respective
   `go test ./internal/...` and `go test ./tests/replay` commands. Run
   `go test -tags designlimitation ./...` separately and report its real nonzero
-  outcome. README gives actual runtime/dependencies, exact setup/run commands,
+  outcome. README provides a concise quick start and links to
+  [DEVELOPMENT](DEVELOPMENT.md) for runtime/dependency details, setup/run commands,
   report interpretation, and the isolated failing-test command. Check local
   Markdown links/anchors, source-event fidelity, numerical inventory, diff, and
   intact unsquashed history. Reassess all eight criteria without changing their
