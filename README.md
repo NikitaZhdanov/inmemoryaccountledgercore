@@ -52,7 +52,7 @@ remains sufficient for the ordinary core tests above. Local `make check` and
 | `make ci` | Formatting check, build, vet, lint, uncached race tests/coverage, vulnerability scan |
 | `make fmt` / `make fmt-check` | Format all Go files / reject unformatted files without changing them |
 | `make test` / `make test-race` | Normal tests / uncached race tests writing ignored `coverage.out` |
-| `make coverage` | Run race tests, then print per-function coverage; no arbitrary threshold |
+| `make coverage` | Run race tests, then print per-function coverage; no minimum percentage enforced |
 | `make build` / `make vet` | Build packages / run Go's static analyzer |
 | `make lint` | Run pinned [Staticcheck](https://staticcheck.dev/docs/getting-started/) |
 | `make vuln` | Run pinned [govulncheck](https://go.dev/doc/security/vuln/) against the selected Go toolchain and dependencies, including tests |
@@ -63,8 +63,8 @@ manual dispatch, and weekly Monday checks. It calls `make ci`, caches Go modules
 and builds using `go.mod`/`go.sum`, and uses read-only repository permissions. Weekly
 [Dependabot](.github/dependabot.yml) updates maintain release-SHA pins for the
 two official GitHub Actions; analyzer pins are updated explicitly in Makefile.
-An old toolchain can produce real standard-library vulnerability findings; upgrade
-the selected compiler rather than suppressing those findings. See
+Vulnerability findings can originate in the selected compiler's standard library;
+upgrade that toolchain when indicated by the scan. See
 [A12](AMBIGUITIES.md#a12--lightweight-development-checks) for these technical choices.
 
 `domain.ParseMoney` accepts ASCII fixed-point text with an optional sign. It
@@ -78,6 +78,5 @@ distinguish input range/precision errors from derived arithmetic overflow. See
 packages do not exist yet. The future report semantics are in [SPEC](docs/SPEC.md#reporting-and-observations).
 The required intentional failing test is deferred to P13, where a genuine design
 limitation will be investigated. Its planned isolated command is
-`go test -tags designlimitation ./...`; no tagged failing test exists yet, so
-running that command now does not demonstrate the failing-test deliverable.
+`go test -tags designlimitation ./...`. The tagged test remains pending.
 Normal Make/CI targets keep that build tag disabled when the test is added later.

@@ -1,8 +1,7 @@
 # Implementation plan
 
-Status: P01 implemented at the human's request; P02–P14 remain planned. This
-document does not itself authorize further implementation. Money unit tests
-exist; no ledger replay or observed design-test failure exists yet.
+Status: P01 implemented; P02–P14 remain planned. Money unit tests exist;
+ledger replay and the required failing design test remain pending.
 
 [TASK](TASK.md) preserves the assignment; [SPEC](SPEC.md) defines agreed behavior;
 [DESIGN](DESIGN.md) proposes its Go implementation; [USE_CASES](USE_CASES.md)
@@ -11,7 +10,7 @@ business decisions, numerical oracles, or [criterion verdicts](../REJECTED.md).
 
 ## Commit and verification discipline
 
-Execute the tasks below in order when implementation is authorized. Each task
+Execute the tasks below in order within the agreed implementation scope. Each task
 is intended as a focused commit containing its implementation, meaningful tests,
 and relevant record updates. Dependencies identify required capabilities; use
 direct fixtures to review lower layers before the complete runner exists.
@@ -36,7 +35,7 @@ review its diff. The separately tagged failing test is excluded from normal
 checks. Completion checks below define requirements; actual outcomes belong in
 [WORKLOG](../WORKLOG.md).
 
-The human subsequently requested Testify assertions for unit tests. Use Go's
+Use the project's Testify assertion convention for unit tests: Go's
 `testing` runner with Testify `require` for prerequisites and `assert` for
 independent results; preserve exact, type-sensitive money expectations. This
 supersedes the original standard-library-only test dependency choice without
@@ -66,9 +65,8 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
 
 - **Status:** Implemented in [`internal/domain`](../internal/domain/money.go),
   with adjacent [unit tests](../internal/domain/money_test.go). Go 1.23.1 module
-  baseline; standard library for production and Testify for unit tests following
-  the human's later request. Submission diagnostics and raw-input retention remain
-  in their later tasks.
+  baseline; standard library for production and Testify for unit tests.
+  Submission diagnostics and raw-input retention remain in their later tasks.
 - **Scope:** Create the module and `internal/domain` package using the standard
   library for production and Testify for unit tests; record the actual Go toolchain
   and module baseline. Add currency
@@ -181,8 +179,8 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
 - **Completion checks:** Direct fixtures prove E7 remains intact and its inverse
   has the right amount, links, and dates. Repeating internal principal correction
   appends nothing; resubmitting E9 rejects as a duplicate. E10's entries preserve
-  order, currency, dates, and exact total without affecting AED. Do not claim
-  full financial restoration until fee and accrual integration passes.
+  order, currency, dates, and exact total without affecting AED. Full financial
+  restoration requires the fee and accrual integration checks in P08/P09.
 
 ### P08 — Daily fee reconciliation and unpaid accruals
 
@@ -199,7 +197,7 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   A fee cannot sustain its own eligibility; refund and renewed eligibility share
   the original assessment identity. Repeated unchanged reconciliation/close adds
   no records or diagnostics. Negative BHD preserves balance, reports undefined
-  policy, adds no invented charge/conversion, and permits continuation. Rebuilt
+  policy, adds no charge/conversion, and permits continuation. Rebuilt
   accruals replace old values and never increase ledger or availability.
 
 ### P09 — Integrate backdated changes with closed-day processing
@@ -289,20 +287,21 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   in AMBIGUITIES A11, and add a real test with an inline explanation under the
   `designlimitation` build tag beside the affected package, or in `tests/replay`
   if it exposes a cross-component limitation. Document its exact isolated command
-  and why it satisfies the assignment. Record any actually abandoned investigation
-  honestly.
+  and why it satisfies the assignment. Record any superseded investigation and
+  its outcome.
 - **Dependencies:** P11, P12; actual implementation evidence is required.
 - **Use cases:** No preselected failing scenario. U07, X06, X10, X11 may inform
   investigation; their specified regression expectations must still pass.
 - **Completion checks:** `go test -tags designlimitation ./...` executes the
   annotated assertion and genuinely exits nonzero for the explained limitation;
-  record the observed failure. `go test ./...` still passes. No skip, expected
-  failure wrapper, unconditional failure, invented balance, weakened assertion,
-  or preserved regression bug substitutes for this deliverable. Expected overflow
-  alone is a passing U07 test, not evidence of the required failing test. If a
-  candidate proves artificial or reveals no meaningful limitation, continue the
-  investigation and leave this task explicitly incomplete; do not claim selection
-  or completion without evidence or introduce a new business promise to force it.
+  record the observed failure. `go test ./...` still passes. The selected
+  assertion must execute, use a justified expectation, and expose a design
+  limitation. Skips, expected-failure wrappers, unconditional failures, weakened
+  assertions, and retained regression bugs do not meet those conditions.
+  Expected overflow alone is a passing U07 test, not evidence of the required
+  failing test. If a candidate reveals no meaningful limitation, continue the investigation and
+  leave this task incomplete. Selection requires implementation evidence and
+  must distinguish a design limitation from an unspecified business requirement.
 
 ### P14 — Final documentation, coverage, and deliverable audit
 
@@ -323,6 +322,6 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   Markdown links/anchors, source-event fidelity, numerical inventory, diff, and
   intact unsquashed history. Reassess all eight criteria without changing their
   agreed verdicts: refuse 2/7/8; qualify 1/6 and the conditional 5; accept 3/4.
-  Ensure abandoned-build claims reflect real attempts and every worklog result
-  is timestamped honestly. Declare completion only with all deliverables checked;
-  otherwise report exactly what remains open.
+  Review replacement records against implementation history and verify each
+  worklog timestamp and recorded outcome. Declare completion only with all
+  deliverables checked; otherwise report exactly what remains open.

@@ -1,7 +1,7 @@
 # Ledger specification
 
 Status: business behavior resolved for the supplied replay and covered validation
-cases. The human authorized P01 money primitives; ledger/replay implementation
+cases. P01 money primitives are implemented; ledger/replay implementation
 remains pending later plan tasks.
 
 [TASK.md](TASK.md) preserves the original assignment and canonical input stream.
@@ -115,10 +115,10 @@ account/window. Serialized identifiers are implementation details.
 
 No BHD tariff or exchange rate is supplied. A negative BHD eligibility balance
 produces an undefined fee-policy error, no fee, a preserved balance, and continued
-processing. Do not invent a currency amount/conversion or treat the missing tariff
-as a zero-fee policy. Day 6 uses the capitalization-inclusive eligibility rule
+processing. The tariff remains undefined, with no conversion or zero-fee policy.
+Day 6 uses the capitalization-inclusive eligibility rule
 below. Identify errors by account/assessed day/reconciliation cause; an unchanged
-repeated close must not fabricate further occurrences.
+repeated close adds no further occurrences.
 
 ## Interest and financial restoration
 
@@ -203,13 +203,12 @@ The assignment still requires a real isolated failing test. Choose it during
 implementation, when it can expose a genuine design limitation; no assertion or
 expected result is preselected. Explain what it reveals inline, preserve its
 failure, isolate it from the passing normal suite, document its exact command,
-and report the observed result honestly. Money unit tests exist under P01;
+and record its observed nonzero result. Money unit tests exist under P01;
 ledger/replay tests and the required failing test remain pending. README records
 current runtime/dependencies and test commands; add replay instructions when built.
 Preserve intact commit history without squashing.
 
 Extra workflows—authorizations with differing booking/value dates, explicit
 partial/over-captures, expiry/cancellation, and inactive-ID settlements—remain
-unspecified extensions outside this supplied scenario. Do not invent or implement
-their business policies as extra features. The missing BHD tariff remains explicit
-with its operational handling resolved.
+unspecified extensions outside this supplied scenario and remain deferred.
+The missing BHD tariff remains explicit with its operational handling resolved.

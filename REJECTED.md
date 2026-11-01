@@ -1,7 +1,7 @@
 # Acceptance-criterion review
 
 All eight supplied claims are assessed independently. Refuse 2, 7, and 8;
-accept 1 and 6 under the documented human interpretations; accept 3 and 4;
+accept 1 and 6 under the documented interpretations; accept 3 and 4;
 accept 5 conditionally. TASK.md remains unchanged.
 
 | # | Verdict | Reason and supporting record |
@@ -17,20 +17,12 @@ accept 5 conditionally. TASK.md remains unchanged.
 
 ## Abandoned approaches
 
-No build approach was abandoned during P01. Discarded
-specification proposals, rather than invented build attempts, are recorded with
-their replacements and reasons in [A3](AMBIGUITIES.md#a3--unmatched-settlement),
+- Replaced handwritten assertion/error checks with Testify `assert`/`require`
+  to adopt the project's selected assertion library. Retained Go's test runner,
+  fixture tables, and exact expectations; see [A13](AMBIGUITIES.md#a13--testify-unit-test-assertions).
+
+Earlier specification and design alternatives are recorded in
+[A2](AMBIGUITIES.md#a2--storage-boundary),
+[A3](AMBIGUITIES.md#a3--unmatched-settlement),
 [A10](AMBIGUITIES.md#a10--duplicate-ids-and-errors), and
 [A11](AMBIGUITIES.md#a11--required-failing-test).
-
-The initial technical design proposed `math/big.Int` money to avoid a fixed-width
-range. Human review favored simpler `int64` value semantics; the revised
-[design](docs/DESIGN.md#language-and-tooling) replaces that proposal with checked
-integer arithmetic and explicit representation-error handling. This was a design
-revision, not an implemented approach that failed a test.
-
-After P01, the human requested Testify. Replaced the implemented handwritten
-assertion/error checks with Testify `assert`/`require`, retaining every table and
-literal expectation. The original approach did not fail; it was superseded by
-the human's assertion-library preference. Go's test runner and standard-library
-production code remain; see [A13](AMBIGUITIES.md#a13--testify-unit-test-assertions).
