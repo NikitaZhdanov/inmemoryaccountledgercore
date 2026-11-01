@@ -68,6 +68,24 @@ func Rebuild(history domain.History, recordCount int) (*Projection, error) {
 	if recordCount < 0 || recordCount > len(history.Records) {
 		return nil, ErrInvalidObservation
 	}
+
+	p, accountOrder, err := initProjection(history, recordCount)
+	if err != nil {
+		return nil, err
+	}
+	if err := p.processRecords(); err != nil {
+		return nil, err
+	}
+	if err := p.applyHolds(); err != nil {
+		return nil, err
+	}
+	if err := p.computeAccruals(accountOrder); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func initProjection(history domain.History, recordCount int) (*Projection, []domain.AccountID, error) {
 	p := &Projection{
 		history:            domain.History{Records: make([]domain.Record, recordCount)},
 		accounts:           make(map[domain.AccountID]domain.Account),
@@ -85,10 +103,10 @@ func Rebuild(history domain.History, recordCount int) (*Projection, error) {
 			account := *record.Account
 			zero, err := domain.NewMoney(account.Currency, 0)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			if _, err := zero.Add(account.OpeningBalance); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			if _, exists := p.accounts[account.ID]; !exists {
 				accountOrder = append(accountOrder, account.ID)
@@ -97,10 +115,14 @@ func Rebuild(history domain.History, recordCount int) (*Projection, error) {
 			p.holds[account.ID] = zero
 		}
 	}
+	return p, accountOrder, nil
+}
+
+func (p *Projection) processRecords() error {
 	for _, record := range p.history.Records {
 		if transition := record.Authorization; transition != nil {
 			if _, err := p.zero(transition.AccountID); err != nil {
-				return nil, err
+				return err
 			}
 			key := authorizationKey{transition.AccountID, transition.AuthorizationID}
 			if _, exists := p.authorizations[key]; !exists {
@@ -110,7 +132,7 @@ func Rebuild(history domain.History, recordCount int) (*Projection, error) {
 		}
 		if entry := record.Entry; entry != nil {
 			if _, err := p.zero(entry.AccountID); err != nil {
-				return nil, err
+				return err
 			}
 			if isFee(entry.Kind) {
 				key := accountDay{entry.AccountID, entry.ValueDay}
@@ -121,7 +143,7 @@ func Rebuild(history domain.History, recordCount int) (*Projection, error) {
 				var err error
 				p.fees[key], err = net.Add(entry.Amount)
 				if err != nil {
-					return nil, fmt.Errorf("fee record %q: %w", record.Key, err)
+					return fmt.Errorf("fee record %q: %w", record.Key, err)
 				}
 			}
 			if entry.Kind == domain.EntryCapitalization && entry.ValueDay > p.capitalizedThrough[entry.AccountID] {
@@ -130,21 +152,29 @@ func Rebuild(history domain.History, recordCount int) (*Projection, error) {
 		}
 		if close := record.Close; close != nil {
 			if _, err := p.zero(close.AccountID); err != nil {
-				return nil, err
+				return err
 			}
 			p.closed[accountDay{close.AccountID, close.Day}] = true
 		}
 	}
+	return nil
+}
+
+func (p *Projection) applyHolds() error {
 	for _, key := range p.authorizationOrder {
 		transition := p.authorizations[key].Transition
 		if transition.State == domain.AuthorizationApproved {
 			total, err := p.holds[key.account].Add(transition.Hold)
 			if err != nil {
-				return nil, fmt.Errorf("active hold %q: %w", key.id, err)
+				return fmt.Errorf("active hold %q: %w", key.id, err)
 			}
 			p.holds[key.account] = total
 		}
 	}
+	return nil
+}
+
+func (p *Projection) computeAccruals(accountOrder []domain.AccountID) error {
 	for _, id := range accountOrder {
 		days, _ := p.ClosedDays(id)
 		for _, day := range days {
@@ -153,16 +183,16 @@ func Rebuild(history domain.History, recordCount int) (*Projection, error) {
 			// interest on later days.
 			base, err := p.Balance(id, day, BalanceOptions{ExcludeCapitalizationDay: day})
 			if err != nil {
-				return nil, err
+				return err
 			}
 			accrual, err := DailyInterest(base)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			p.accruals[accountDay{id, day}] = accrual
 		}
 	}
-	return p, nil
+	return nil
 }
 
 // Balance starts with opening money and adds selected postings whose value day
