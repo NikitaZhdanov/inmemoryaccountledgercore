@@ -60,7 +60,11 @@ internal correction idempotence versus duplicate input rejection, ordered exact
 allocation, retained source fields, and atomic append/overflow failures.
 `tests/replay` wires the real core and memory adapter for E1–E6, including unknown
 settlement rejection and continuation, and for E7/E9/E10 principal posting and
-currency isolation. Full replay and reconciliation remain planned.
+currency isolation. Closing tests cover explicit Days 1–5 fee reconciliation,
+linked refunds/renewed adjustments, replaced unpaid accruals, policy/currency
+isolation, and append/arithmetic failures, including an interruption between
+committed days. Real-storage integration also checks independent account/day
+obligations. Automatic submission reconciliation and full replay remain planned.
 
 For the full local checks, using a current Go toolchain:
 

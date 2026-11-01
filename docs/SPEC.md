@@ -4,8 +4,9 @@ Status: business behavior resolved for the supplied replay and covered validatio
 cases. P01 money primitives, P02 pure interest/allocation calculations, P03
 append-only storage, P04 history projections, and P05 configuration/ordinary
 submissions, P06 authorization/final settlement, and P07 linked principal reversal
-and instalment posting are implemented. Fee reconciliation, closing, and full
-replay remain planned.
+and instalment posting, and P08 explicit Days 1–5 closing/fee reconciliation are
+implemented. Automatic historical reconciliation after submissions, Day 6
+finalization, and full replay remain planned.
 
 [TASK.md](TASK.md) preserves the original assignment and canonical input stream.
 This file defines behavior; [AMBIGUITIES.md](../AMBIGUITIES.md) records decision
@@ -250,8 +251,10 @@ ordinary-posting integration; full replay and the required failing test remain
 pending. P06 adds authorization/final-settlement tests, E1–E6 integration, and
 direct-fixture coverage of Auth-B's decline and retained decision after financial
 restoration. P07 adds linked principal-reversal and instalment-posting unit tests
-and real-component integration; fee refunds and full restoration remain pending
-P08/P09. README links
+and real-component integration. P08 adds explicit chronological closing, fee
+refunds/renewed adjustments, and accrual-restoration tests with controlled
+principal fixtures, plus real-storage account isolation. Automatic E7/E9
+reconciliation and full restoration through submissions remain P09 work. README links
 to [DEVELOPMENT](DEVELOPMENT.md) for runtime/dependency details and test commands;
 add replay instructions when built.
 Preserve intact commit history without squashing.

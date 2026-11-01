@@ -16,7 +16,13 @@ P07 [reversal](../internal/ledger/corrections_test.go) and
 [instalment](../internal/ledger/instalments_test.go) unit tests plus
 [posting integration](../tests/replay/corrections_test.go) cover H05/H06's
 principal postings, U04 duplicates, and X06's principal-correction idempotence.
-Fee refunds and closed-day accrual restoration remain P08/P09 integration work.
+P08 [closing tests](../internal/ledger/closing_test.go) cover H04/H05's fee and
+accrual oracle using controlled principal fixtures, H09's configured policies,
+X03's unpaid rounded interest, X05's own-fee exclusion and earlier-fee carry,
+X06's repeated closing/correction, X07's renewed eligibility, and X09's corrected
+unpaid accruals. [Real-storage tests](../tests/replay/closing_test.go) check account
+isolation and idempotent fee/refund records. Automatic submission integration
+remains P09; Day 6 and capitalization portions remain P10/P11.
 
 Each scenario is independent unless its preconditions name a replay checkpoint.
 Validation fixtures supplement, rather than modify, E1–E10. Expected rejection,

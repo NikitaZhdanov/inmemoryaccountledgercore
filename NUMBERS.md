@@ -119,8 +119,10 @@ Additional allocation oracles apply at both currency scales:
 
 P04 history fixtures record principal, fee, and correction effects directly.
 P05 additionally posts E1/E2/E4 through the core; P06 integration submits E1–E6.
-P07 adds E7/E9 principal posting and E10 instalments; fee generation/refunds and
-closed-day restoration remain planned. All balances below are AED.
+P07 adds E7/E9 principal posting and E10 instalments. P08 generates the fee/refund
+and closed-day accrual results below through explicit closing/reconciliation with
+controlled principal fixtures; automatic submission integration remains P09.
+All balances below are AED.
 
 | Observation | Value day | Fee-free balance | Posted balance |
 | --- | ---: | ---: | ---: |
@@ -254,6 +256,38 @@ from 0.000 to 0.004 without changing AED. Final values appear below.
 - Opening MaxInt64 − 9,999 BHD units plus E10's 10,000 units overflows only at
   its last instalment: the first two parts total 6,666; the final total exceeds
   MaxInt64 by one. No part of the failing batch is appended.
+
+### Closing and fee reconciliation fixtures
+
+- Ordinary closing accepts a supplied positive day; the canonical replay selects
+  ordinary closes for Days 1–5 and capitalization-aware finalization for Day 6.
+  Day zero and booking day zero are invalid API bounds. Empty correction causes
+  reject before append. Alternate-schedule fixtures close Days 6 and 7 ordinarily
+  and refund their fees after a one-unit correction, proving that neither the
+  canonical capitalization day nor the replay-window end limits the core API.
+- Required signed fee net is `−configured charge` for negative eligibility,
+  otherwise zero. Append `required net − recorded net`; a zero difference
+  appends nothing. Each new close contributes one checkpoint, and each changed
+  fee net contributes one posting. No daily accrual record is stored.
+- Opening AED −0.01 and a Day 3 credit of 0.01 give Day 2 eligibility −0.01
+  and Day 3 eligibility −25.00 after carrying Day 2's fee. Posted closes are
+  −25.01 and −50.00. A backdated 0.01 credit restores underlying Day 2 to zero:
+  chronological refunds restore posted closes to 0.00 and 0.01. A new 0.01
+  debit renews both fees under their original obligations. Two refund/renewal
+  cycles produce two assessments, four refunds, and four adjustments; no
+  second independent assessment is created. One minor unit is the smallest
+  change crossing eligibility; two cycles verify distinct correction identities.
+- Negative BHD −0.001 under the explicit zero policy stays −0.001 with zero
+  interest and no fee/diagnostic. Custom XYZ at scale four uses a configured
+  one-minor-unit charge: −0.0001 closes at −0.0002. These minimal fixtures
+  distinguish no-fee configuration from a nonzero policy without built-in codes.
+- Two AED accounts, each opening −0.01, receive independent −25.00 fees;
+  each account's 0.01 correction/refund restores its own close to zero. Shared
+  currency/day/cause values must not share an obligation or correction key.
+- Opening MinInt64 cannot absorb the configured 2,500-unit AED fee. Separately,
+  opening −1 plus a later-value debit of MinInt64 + 1 equals MinInt64 before
+  fees; an earlier 2,500-unit fee would underflow that later close. Both fail
+  before appending the fee or close checkpoint.
 
 ## Expected replay results
 
