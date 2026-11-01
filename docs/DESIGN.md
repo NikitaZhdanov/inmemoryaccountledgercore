@@ -186,10 +186,17 @@ own day. Early business rejections return their diagnostic batch; technical
 failures return no batch or outcome.
 
 [Ledger submission](../internal/ledger/submission.go) supplies committed history and the configured
-account value to posting preparation and appends the returned batch once. An outcome is returned
-only after that commit succeeds. Error sentinels and diagnostic codes for input
-processing belong to posting; observation errors and query types belong to
-projection. Callers import those owners directly.
+account value to posting preparation and appends the returned batch once. A
+financial batch then triggers closed-day reconciliation for its account from its
+posted value day, using the posting's booking day and the committed attempt key
+as correction cause. Supported submissions post on one account/value day, so
+instalment batches trigger one reconciliation. Batches without monetary entries,
+including approvals, declines, and rejections, trigger no reconciliation. Open
+days remain open until an explicit close. A successful outcome returns only after
+all triggered corrections succeed; technical errors return a zero outcome even
+when the input or earlier correction batches have committed. Error sentinels and
+diagnostic codes for input processing belong to posting; observation errors and
+query types belong to projection. Callers import those owners directly.
 
 [Authorization handling](../internal/posting/authorization.go) computes decisions
 from the committed projection and builds transitions without changing it.

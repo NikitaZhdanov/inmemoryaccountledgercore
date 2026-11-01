@@ -8,8 +8,8 @@ rounding, conserving instalment allocation, append-only in-memory storage, and
 history-based balance/state projections, validated core initialization, and
 credit/debit submissions, authorization decisions, final settlement, linked debit
 reversals, ordered instalment credits with duplicate rejection, and explicit
-closing/fee reconciliation are implemented. Automatic reconciliation
-after financial submissions, Day 6 finalization, and replay reporting are planned.
+closing/fee reconciliation with automatic historical corrections after financial
+submissions are implemented. Day 6 finalization and replay reporting are planned.
 
 The core coordinates focused `posting`, `projection`, and `interest` packages;
 see the [package map](docs/DESIGN.md#packages-and-dependencies).

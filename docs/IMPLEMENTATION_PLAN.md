@@ -1,10 +1,11 @@
 # Implementation plan
 
-Status: P01–P08 implemented for their specified workflows; P09–P14 remain planned.
+Status: P01–P09 implemented for their specified workflows; P10–P14 remain planned.
 Money, calculation, repository, projection, configuration, posting, authorization,
 settlement, reversal, instalment, and explicit closing/reconciliation tests exist,
-including real-component integration; automatic historical reconciliation, full
-replay, and the required failing design test remain pending. The package split
+including automatic historical reconciliation and real-component checkpoint
+integration; Day 6 finalization, full replay, and the required failing design test
+remain pending. The package split
 under [A16](../AMBIGUITIES.md#a16--ledger-package-boundaries) changes ownership
 without advancing those remaining tasks.
 
@@ -164,7 +165,7 @@ compose real components before the scenario runner exists.
   Proposed-history checks catch derived overflow before append, including at
   later value dates. Amount signs follow [A10](../AMBIGUITIES.md#a10--ordinary-input-amount-signs).
   Authorization and settlement follow in P06; reversal, instalments, and
-  reconciliation remain scheduled in P07–P09.
+  reconciliation are covered by P07–P09.
 - **Scope:** In `internal/posting`, prepare credit/debit batches for ledger commits,
   exact monetary validation, original input retention, unique attempt identities,
   outcomes, and diagnostics. Reject every reused event ID before any
@@ -197,7 +198,7 @@ compose real components before the scenario runner exists.
   availability; final settlement atomically debits the settlement amount and
   releases the linked full hold. Unknown-ID rejection, duplicate outcomes,
   fee/unpaid-interest boundaries, and technical-failure atomicity are covered.
-  U02 uses direct correction fixtures; full E7/E9 integration remains in P09.
+  U02 uses direct correction fixtures; P09 adds full E7/E9 checkpoint integration.
   Zero amounts pass validation and negative amounts reject under
   [resolved A15](../AMBIGUITIES.md#a15--authorization-and-settlement-amount-signs).
   Deferred workflows return a technical error without an attempt.
@@ -226,7 +227,7 @@ compose real components before the scenario runner exists.
   debit record business rejections. E10 posts all three ordered BHD credits in one
   batch. Tests cover retained source fields, currency isolation, exact totals,
   and technical-failure atomicity. P08 covers fee refunds and closed-day accrual
-  restoration with controlled fixtures; full E7/E8/E9 integration remains in P09.
+  restoration with controlled fixtures; P09 adds full E7/E8/E9 checkpoint integration.
 - **Scope:** In `internal/posting`, add E9's principal reversal linked to E7,
   retaining the original record and using booking Day 6/value Day 2. Add E10's
   ordered instalment entries with its original Day 5 dates. Separate
@@ -250,8 +251,8 @@ compose real components before the scenario runner exists.
   commit together; unchanged work makes no append. Rebuilt unpaid accruals remain
   projections. Tests cover the E7/E9 numerical oracle, own-fee exclusion,
   earlier-fee carry, repeated eligibility changes, zero/custom currency policies,
-  interest ties, and per-batch technical failures. Automatic submission-triggered
-  reconciliation remains P09; Day 6 finalization remains P10.
+  interest ties, and per-batch technical failures. P09 adds automatic
+  submission-triggered reconciliation; Day 6 finalization remains P10.
 - **Schedule boundary:** The caller supplies ordinary close days; the core has
   no fixed Day 5 cutoff. Days 1–5 below identify canonical replay coverage.
   [Alternate-schedule tests](../internal/ledger/closing_test.go) exercise ordinary
@@ -277,6 +278,14 @@ compose real components before the scenario runner exists.
 
 ### P09 — Integrate backdated changes with closed-day processing
 
+- **Status:** Implemented in [submission orchestration](../internal/ledger/submission.go),
+  with [batch-boundary tests](../internal/ledger/backdating_test.go) and
+  [real-component checkpoint integration](../tests/replay/backdating_test.go).
+  Financial submissions reconcile affected closed days before returning without
+  closing open days. Tests cover E7/E8/E9 timing, linked fee/refund dates,
+  preserved outcomes, corrected AED/BHD accruals, repeated internal work,
+  duplicate rejection without correction effects, and append/arithmetic failures
+  after committed input or earlier fee batches. Day 6 capitalization remains P10.
 - **Scope:** In `internal/ledger`, connect financial submissions to affected
   closed-day reconciliation and explicit close calls. Reconcile E7's Days 2–4
   before returning control for E8; close Day 5 only after E8. Process E9's

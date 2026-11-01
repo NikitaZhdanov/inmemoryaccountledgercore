@@ -12,8 +12,7 @@ import (
 	"inmemoryaccountledgercore/internal/repository/memory"
 )
 
-// Explicit close/reconciliation calls exercise P08's real storage boundary.
-// Automatic historical correction after Submit remains P09 work.
+// Account isolation covers explicit closing and submission-triggered refunds.
 func TestClosingObligationsRemainIndependentAcrossAccounts(t *testing.T) {
 	currency, err := domain.NewCurrency("AED", 2)
 	require.NoError(t, err)
@@ -53,7 +52,11 @@ func TestClosingObligationsRemainIndependentAcrossAccounts(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, domain.OutcomeAccepted, outcome.Status)
+		// Submission must refund this account before returning. Repeating
+		// the same reconciliation performs no additional append.
+		corrected := repository.History()
 		require.NoError(t, core.ReconcileClosedDays(id, 2, 3, "restore"))
+		assert.Equal(t, corrected, repository.History())
 	}
 	history := repository.History()
 	state, err := projection.Rebuild(history, len(history.Records))

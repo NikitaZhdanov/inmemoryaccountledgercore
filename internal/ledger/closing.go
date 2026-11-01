@@ -20,7 +20,8 @@ var ErrInvalidReconciliation = errors.New("invalid close or reconciliation reque
 // a later failure does not roll back earlier committed days. bookingDay dates
 // new fee effects; cause identifies the close or recorded financial correction.
 // Both must be supplied (positive booking day, nonempty cause).
-// Repeating an unchanged close appends nothing. Submissions do not call this API.
+// Repeating an unchanged close appends nothing. Callers supply close checkpoints;
+// submissions reconcile existing checkpoints without closing new days.
 func (c *Core) CloseDay(id domain.AccountID, day, bookingDay domain.Day, cause domain.RecordKey) error {
 	if err := c.validateReconciliation(id, day, bookingDay, cause); err != nil {
 		return err
