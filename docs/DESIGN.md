@@ -104,13 +104,21 @@ range/precision errors from derived arithmetic overflow.
 
 ## Configuration validation
 
-The core constructor receives a repository, accounts, and explicit per-currency
-charges, proposed as `map[domain.Currency]domain.Money`. It validates descriptors,
-one consistent scale per code, policy coverage for every account currency, and
+The [core constructor](../internal/ledger/core.go) receives a repository, accounts,
+and explicit per-currency charges as `map[domain.Currency]domain.Money`. It validates
+descriptors, one consistent scale per code, policy coverage for every account currency, and
 charge currency/nonnegativity before processing inputs or appending history.
 Membership is checked separately from value so an absent entry cannot become an
 implicit zero charge. Accounts and policies are copied into detached, core-owned
 configuration; callers cannot change replay behavior through retained containers.
+Account records are appended in supplied order in one initialization batch after
+validation. Initialization uses a fresh repository; core configuration owns
+account identity and policy lookup, while history owns financial state.
+The [configuration helpers](../internal/ledger/configuration.go) first validate
+distinct currency descriptors collected from accounts and policy keys, including
+code/scale consistency. Separate account and policy passes then check and copy
+their configuration. Money owns descriptor compatibility; policy coverage and
+nonnegative charges remain ledger rules.
 
 `cmd/replay` supplies concrete descriptors, accounts, and policies, then passes
 configured descriptors to scenario. Fixtures supply their own configuration.
@@ -158,6 +166,13 @@ Scenario submits inputs in supplied order and invokes explicit closes from
 not trigger closes. Ledger validates identity and amounts, computes the outcome,
 and appends the corresponding input, outcome, monetary, and authorization
 records according to [SPEC](SPEC.md).
+
+[Ordinary submission](../internal/ledger/submission.go) scans stored attempts to
+reject reused event IDs before dispatch. Committed attempt count supplies fresh
+sequential identities independent of supplied IDs/order. A proposed posting
+history is rebuilt and checked at every affected value-date checkpoint before
+append; this catches overflow at later postings as well as the input's own day.
+No candidate projection becomes authoritative before storage commits it.
 
 Financial changes affecting closed history trigger chronological reconciliation
 of affected account/days before the next input. Ledger projects the value-dated

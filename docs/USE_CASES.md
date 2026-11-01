@@ -150,6 +150,8 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
   financial/hold effects; the subsequent valid input processes.
 - **Preserved invariants:** No ingress rounding or tolerance changes principal;
   [monetary validation and errors](SPEC.md#monetary-validation-and-errors).
+  Ordinary CREDIT/DEBIT validation also rejects negative amounts and accepts
+  zero under [A10](../AMBIGUITIES.md#a10--ordinary-input-amount-signs).
 
 ### U04 — Reject duplicate IDs across original outcomes
 
@@ -336,8 +338,9 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
   int64 endpoints remain exact at configurable scales. Equal code/scale values
   interoperate across instances; different codes or scales reject arithmetic.
 - **Preserved invariants:** No built-in currency enumeration or implicit conversion;
-  [monetary validation](SPEC.md#monetary-validation-and-errors). Account/policy
-  descriptor consistency during initialization follows in P05.
+  [monetary validation](SPEC.md#monetary-validation-and-errors). P05 also covers
+  account/policy descriptor consistency during initialization and exact
+  ordinary submissions at these scales.
 
 ## Coverage review and scope boundary
 

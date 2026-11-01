@@ -1,8 +1,9 @@
 # Implementation plan
 
-Status: P01–P04 implemented; P05–P14 remain planned. Money, calculation,
-repository, and history-projection unit tests exist; ledger replay and the
-required failing design test remain pending.
+Status: P01–P05 implemented; P06–P14 remain planned. Money, calculation,
+repository, projection, configuration, and ordinary-submission tests exist,
+including real-component posting integration; full replay and the required
+failing design test remain pending.
 
 [TASK](TASK.md) preserves the assignment; [SPEC](SPEC.md) defines agreed behavior;
 [DESIGN](DESIGN.md) proposes its Go implementation; [USE_CASES](USE_CASES.md)
@@ -149,6 +150,16 @@ compose real components before the scenario runner exists.
 
 ### P05 — Ordinary input processing, validation, and duplicate rejection
 
+- **Status:** Implemented in [core initialization](../internal/ledger/core.go)
+  and [submission handling](../internal/ledger/submission.go), with adjacent
+  configuration/submission tests and [posting integration](../tests/replay/ordinary_test.go).
+  Configuration is validated and copied before account records are appended.
+  Ordinary attempts retain source fields and append outcomes, postings, or
+  diagnostics atomically; duplicate checks precede dispatch and validation.
+  Proposed-history checks catch derived overflow before append, including at
+  later value dates. Amount signs follow [A10](../AMBIGUITIES.md#a10--ordinary-input-amount-signs).
+  Authorization, settlement, reversal, instalments, and reconciliation remain
+  scheduled in P06–P09; unsupported workflows currently return a technical error.
 - **Scope:** In `internal/ledger`, implement submission handling for credits/debits,
   exact monetary validation, original input retention, unique attempt identities,
   outcomes, and diagnostics. Reject every reused event ID before any
