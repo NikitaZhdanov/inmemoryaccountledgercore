@@ -8,6 +8,7 @@ import (
 
 	"inmemoryaccountledgercore/internal/domain"
 	"inmemoryaccountledgercore/internal/ledger"
+	"inmemoryaccountledgercore/internal/projection"
 	"inmemoryaccountledgercore/internal/repository/memory"
 )
 
@@ -55,7 +56,7 @@ func TestClosingObligationsRemainIndependentAcrossAccounts(t *testing.T) {
 		require.NoError(t, core.ReconcileClosedDays(id, 2, 3, "restore"))
 	}
 	history := repository.History()
-	projection, err := ledger.Rebuild(history, len(history.Records))
+	state, err := projection.Rebuild(history, len(history.Records))
 	require.NoError(t, err)
 	refunds := 0
 	for _, record := range history.Records {
@@ -69,7 +70,7 @@ func TestClosingObligationsRemainIndependentAcrossAccounts(t *testing.T) {
 	}
 	assert.Equal(t, 2, refunds)
 	for _, id := range []domain.AccountID{"first", "second"} {
-		balance, err := projection.Balance(id, 2, ledger.BalanceOptions{})
+		balance, err := state.Balance(id, 2, projection.BalanceOptions{})
 		require.NoError(t, err)
 		assert.Zero(t, balance.MinorUnits())
 		require.NoError(t, core.ReconcileClosedDays(id, 2, 3, "restore"))

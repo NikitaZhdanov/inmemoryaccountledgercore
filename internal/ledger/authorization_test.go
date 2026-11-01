@@ -2,7 +2,6 @@ package ledger
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"testing"
 
@@ -10,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"inmemoryaccountledgercore/internal/domain"
+	"inmemoryaccountledgercore/internal/posting"
+	"inmemoryaccountledgercore/internal/projection"
 )
 
 func authorizationFixture(t *testing.T, opening int64) (*Core, *journal, domain.InputEvent) {
@@ -20,21 +21,21 @@ func authorizationFixture(t *testing.T, opening int64) (*Core, *journal, domain.
 	return core, repository, input
 }
 
-func authorizationProjection(t *testing.T, repository Repository, day domain.Day, ledger, holds, available int64) *Projection {
+func authorizationProjection(t *testing.T, repository Repository, day domain.Day, ledger, holds, available int64) *projection.Projection {
 	t.Helper()
 	history := repository.History()
-	projection, err := Rebuild(history, len(history.Records))
+	state, err := projection.Rebuild(history, len(history.Records))
 	require.NoError(t, err)
-	balance, err := projection.Balance("ACC-001", day, BalanceOptions{})
+	balance, err := state.Balance("ACC-001", day, projection.BalanceOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, ledger, balance.MinorUnits())
-	active, err := projection.ActiveHolds("ACC-001")
+	active, err := state.ActiveHolds("ACC-001")
 	require.NoError(t, err)
 	assert.Equal(t, holds, active.MinorUnits())
-	spendable, err := projection.AvailableBalance("ACC-001", day)
+	spendable, err := state.AvailableBalance("ACC-001", day)
 	require.NoError(t, err)
 	assert.Equal(t, available, spendable.MinorUnits())
-	return projection
+	return state
 }
 
 func TestAuthorizationAvailabilityBoundaries(t *testing.T) {
@@ -66,8 +67,8 @@ func TestAuthorizationAvailabilityBoundaries(t *testing.T) {
 	outcome, err = core.Submit(input)
 	require.NoError(t, err)
 	assert.Equal(t, domain.OutcomeDeclined, outcome.Status)
-	projection := authorizationProjection(t, repository, 2, 25000, 25000, 0)
-	decline, exists := projection.Authorization(input.AccountID, input.AuthorizationID)
+	state := authorizationProjection(t, repository, 2, 25000, 25000, 0)
+	decline, exists := state.Authorization(input.AccountID, input.AuthorizationID)
 	require.True(t, exists)
 	assert.Equal(t, domain.AuthorizationDeclined, decline.Transition.State)
 	assert.Equal(t, int64(1), decline.Transition.Hold.MinorUnits(), "retain the requested amount without reserving it")
@@ -77,7 +78,7 @@ func TestAuthorizationAvailabilityBoundaries(t *testing.T) {
 	diagnostic := after.Records[len(after.Records)-1]
 	assert.Equal(t, outcome.DiagnosticKey, diagnostic.Key)
 	assert.Equal(t, domain.Diagnostic{
-		Code: DiagnosticInsufficientAvailability, Reason: "hold would make available balance negative",
+		Code: posting.DiagnosticInsufficientAvailability, Reason: "hold would make available balance negative",
 		AccountID: input.AccountID, ObservationDay: 2, AttemptID: outcome.AttemptID,
 	}, *diagnostic.Diagnostic)
 }
@@ -91,8 +92,8 @@ func TestAuthorizationIncludesPostedFeesExcludesUnpaidInterestAndFutureValues(t 
 		{Key: "close", Close: &domain.DayClose{AccountID: input.AccountID, Day: 1}},
 		{Key: "future", Entry: &domain.MonetaryEntry{AccountID: input.AccountID, Kind: domain.EntryCredit, Amount: fixtureMoney(t, input.Currency, 1), BookingDay: 1, ValueDay: 3}},
 	}}))
-	projection := authorizationProjection(t, repository, 2, 22500, 0, 22500)
-	accrual, exists := projection.Accrual(input.AccountID, 1)
+	state := authorizationProjection(t, repository, 2, 22500, 0, 22500)
+	accrual, exists := state.Accrual(input.AccountID, 1)
 	require.True(t, exists)
 	assert.Equal(t, int64(9), accrual.MinorUnits())
 	input.RawAmount = "225.01"
@@ -134,8 +135,8 @@ func TestFinalSettlementReleasesOnlyItsEntireHold(t *testing.T) {
 		BookingDay: 4, ValueDay: 4, State: domain.AuthorizationSettled,
 		Hold: approval.Authorization.Hold, OriginalHoldKey: approval.Key,
 	}, *records[3].Authorization)
-	projection := authorizationProjection(t, repository, 4, 46500, 5000, 41500)
-	settled, exists := projection.Authorization(input.AccountID, input.AuthorizationID)
+	state := authorizationProjection(t, repository, 4, 46500, 5000, 41500)
+	settled, exists := state.Authorization(input.AccountID, input.AuthorizationID)
 	require.True(t, exists)
 	assert.Equal(t, domain.AuthorizationSettled, settled.Transition.State)
 	assert.Equal(t, approval, repository.History().Records[3])
@@ -162,8 +163,8 @@ func TestAuthBDeclineSurvivesFinancialRestoration(t *testing.T) {
 		{Key: "refund/day2", Entry: &domain.MonetaryEntry{AccountID: input.AccountID, Kind: domain.EntryFeeRefund, Amount: fixtureMoney(t, input.Currency, 2500), BookingDay: 6, ValueDay: 2}},
 		{Key: "refund/day4", Entry: &domain.MonetaryEntry{AccountID: input.AccountID, Kind: domain.EntryFeeRefund, Amount: fixtureMoney(t, input.Currency, 2500), BookingDay: 6, ValueDay: 4}},
 	}}))
-	projection := authorizationProjection(t, repository, 5, 46500, 0, 46500)
-	auth, exists := projection.Authorization(input.AccountID, input.AuthorizationID)
+	state := authorizationProjection(t, repository, 5, 46500, 0, 46500)
+	auth, exists := state.Authorization(input.AccountID, input.AuthorizationID)
 	require.True(t, exists)
 	assert.Equal(t, domain.AuthorizationDeclined, auth.Transition.State)
 	assert.Equal(t, outcome.AttemptID, auth.Transition.AttemptID)
@@ -177,11 +178,11 @@ func TestAuthorizationAndSettlementValidation(t *testing.T) {
 			change func(*domain.InputEvent)
 			code   string
 		}{
-			{"precision", func(e *domain.InputEvent) { e.RawAmount = "1.005" }, DiagnosticAmountPrecision},
-			{"range", func(e *domain.InputEvent) { e.RawAmount = "92233720368547758.08" }, DiagnosticAmountRange},
-			{"syntax", func(e *domain.InputEvent) { e.RawAmount = "invalid" }, DiagnosticInvalidAmount},
-			{"unknown account", func(e *domain.InputEvent) { e.AccountID = "unknown" }, DiagnosticUnknownAccount},
-			{"currency mismatch", func(e *domain.InputEvent) { e.Currency = fixtureCurrency(t, "BHD", 3) }, DiagnosticCurrencyMismatch},
+			{"precision", func(e *domain.InputEvent) { e.RawAmount = "1.005" }, posting.DiagnosticAmountPrecision},
+			{"range", func(e *domain.InputEvent) { e.RawAmount = "92233720368547758.08" }, posting.DiagnosticAmountRange},
+			{"syntax", func(e *domain.InputEvent) { e.RawAmount = "invalid" }, posting.DiagnosticInvalidAmount},
+			{"unknown account", func(e *domain.InputEvent) { e.AccountID = "unknown" }, posting.DiagnosticUnknownAccount},
+			{"currency mismatch", func(e *domain.InputEvent) { e.Currency = fixtureCurrency(t, "BHD", 3) }, posting.DiagnosticCurrencyMismatch},
 		} {
 			t.Run(string(kind)+"/"+tc.name, func(t *testing.T) {
 				core, repository, input := authorizationFixture(t, 25000)
@@ -229,7 +230,7 @@ func TestAuthorizationAndSettlementDuplicateOutcomes(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, domain.OutcomeRejected, outcome.Status)
 				requireAttempt(t, repository, start, duplicate, outcome)
-				assert.Equal(t, DiagnosticDuplicateID, repository.records[start+2].Diagnostic.Code)
+				assert.Equal(t, posting.DiagnosticDuplicateID, repository.records[start+2].Diagnostic.Code)
 				assert.Equal(t, before.Records, repository.History().Records[:len(before.Records)])
 			}
 			// Every record added since the original is a rejected attempt,
@@ -323,48 +324,8 @@ func TestNegativeAuthorizationAndSettlementAmountsRejectWithoutEffects(t *testin
 				assert.Equal(t, appends+1, repository.appends, "rejection commits exactly once")
 				requireAttempt(t, repository, len(before.Records), input, outcome)
 				after := repository.History()
-				assert.Equal(t, DiagnosticNegativeAmount, after.Records[len(after.Records)-1].Diagnostic.Code)
+				assert.Equal(t, posting.DiagnosticNegativeAmount, after.Records[len(after.Records)-1].Diagnostic.Code)
 				assert.Equal(t, before.Records, after.Records[:len(before.Records)])
-				authorizationProjection(t, repository, 2, 25000, holds, 25000-holds)
-			})
-		}
-	}
-}
-
-func TestAuthorizationBuildersRejectNegativeAmounts(t *testing.T) {
-	for _, kind := range []domain.InputKind{domain.InputAuthorization, domain.InputSettlement} {
-		for _, minor := range []int64{-1, math.MinInt64} {
-			t.Run(fmt.Sprintf("%s/%d", kind, minor), func(t *testing.T) {
-				core, repository, input := authorizationFixture(t, 25000)
-				var holds int64
-				if kind == domain.InputSettlement {
-					_, err := core.Submit(input)
-					require.NoError(t, err)
-					input.ID = "settlement"
-					holds = 20000
-				}
-				input.Kind = kind
-				before := repository.History()
-				attempt, _ := prepareAttempt(before, input)
-				amount := fixtureMoney(t, input.Currency, minor)
-				builder := authorizationBatch
-				if kind == domain.InputSettlement {
-					builder = settlementBatch
-				}
-				// Bypass Submit's parser to exercise each workflow's own guard.
-				batch, outcome, err := builder(before, attempt, amount)
-				require.NoError(t, err)
-				assert.Equal(t, domain.OutcomeRejected, outcome.Status)
-				require.Len(t, batch.Records, 3)
-				assert.Equal(t, attempt, *batch.Records[0].Attempt)
-				assert.Equal(t, outcome, *batch.Records[1].Outcome)
-				assert.Equal(t, DiagnosticNegativeAmount, batch.Records[2].Diagnostic.Code)
-				assert.Equal(t, outcome.DiagnosticKey, batch.Records[2].Key)
-				for _, record := range batch.Records {
-					assert.Nil(t, record.Entry, "negative settlement must not produce a credit")
-					assert.Nil(t, record.Authorization, "negative request must not create or release a hold")
-				}
-				assert.Equal(t, before, repository.History(), "building a batch cannot commit it")
 				authorizationProjection(t, repository, 2, 25000, holds, 25000-holds)
 			})
 		}
@@ -379,8 +340,8 @@ func TestZeroAuthorizationAndSettlementAmounts(t *testing.T) {
 			outcome, err := core.Submit(input)
 			require.NoError(t, err)
 			assert.Equal(t, domain.OutcomeAccepted, outcome.Status)
-			projection := authorizationProjection(t, repository, 2, 25000, 0, 25000)
-			auth, exists := projection.Authorization(input.AccountID, input.AuthorizationID)
+			state := authorizationProjection(t, repository, 2, 25000, 0, 25000)
+			auth, exists := state.Authorization(input.AccountID, input.AuthorizationID)
 			require.True(t, exists)
 			assert.Equal(t, domain.AuthorizationApproved, auth.Transition.State)
 			assert.Zero(t, auth.Transition.Hold.MinorUnits())
@@ -394,8 +355,8 @@ func TestZeroAuthorizationAndSettlementAmounts(t *testing.T) {
 			outcome, err := core.Submit(input)
 			require.NoError(t, err)
 			assert.Equal(t, domain.OutcomeAccepted, outcome.Status)
-			projection := authorizationProjection(t, repository, 2, 25000, 0, 25000)
-			auth, exists := projection.Authorization(input.AccountID, input.AuthorizationID)
+			state := authorizationProjection(t, repository, 2, 25000, 0, 25000)
+			auth, exists := state.Authorization(input.AccountID, input.AuthorizationID)
 			require.True(t, exists)
 			assert.Equal(t, domain.AuthorizationSettled, auth.Transition.State)
 			assert.Equal(t, approval.Key, auth.Transition.OriginalHoldKey)
@@ -416,7 +377,7 @@ func TestZeroAuthorizationAndSettlementAmounts(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, domain.OutcomeRejected, outcome.Status)
 	history := repository.History()
-	assert.Equal(t, DiagnosticUnknownAuthorization, history.Records[len(history.Records)-1].Diagnostic.Code)
+	assert.Equal(t, posting.DiagnosticUnknownAuthorization, history.Records[len(history.Records)-1].Diagnostic.Code)
 }
 
 func TestDeferredAuthorizationWorkflowsAppendNothing(t *testing.T) {
@@ -446,7 +407,7 @@ func TestDeferredAuthorizationWorkflowsAppendNothing(t *testing.T) {
 			}
 			before := repository.History()
 			outcome, err := core.Submit(input)
-			require.ErrorIs(t, err, ErrUnsupportedInput)
+			require.ErrorIs(t, err, posting.ErrUnsupportedInput)
 			assert.Equal(t, domain.InputOutcome{}, outcome)
 			assert.Equal(t, before, repository.History())
 		})

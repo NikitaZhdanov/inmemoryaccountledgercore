@@ -17,6 +17,9 @@ accept 5 conditionally. TASK.md remains unchanged.
 
 ## Abandoned approaches
 
+- Replaced the broad ledger business-logic package with focused posting,
+  projection, and interest packages; ledger retains configuration and commit
+  workflows. See the [package-boundary decision](AMBIGUITIES.md#a16--ledger-package-boundaries).
 - Replaced technical `ErrUnsupportedInput` handling for a different attempt to
   reverse an already reversed debit with a recorded business rejection, following
   the [explicit clarification](AMBIGUITIES.md#a3--backdating-and-reversal).

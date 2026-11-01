@@ -1,4 +1,4 @@
-package ledger_test
+package interest_test
 
 import (
 	"math"
@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"inmemoryaccountledgercore/internal/domain"
-	"inmemoryaccountledgercore/internal/ledger"
+	"inmemoryaccountledgercore/internal/interest"
 )
 
 func money(t *testing.T, currency domain.Currency, minor int64) domain.Money {
@@ -51,7 +51,7 @@ func TestDailyInterest(t *testing.T) {
 		} {
 			t.Run(currency.Code()+"/"+strconv.FormatInt(tc.base, 10), func(t *testing.T) {
 				base := money(t, currency, tc.base)
-				got, err := ledger.DailyInterest(base)
+				got, err := interest.Daily(base)
 				require.NoError(t, err)
 				assert.Equal(t, money(t, currency, tc.want), got)
 				assert.Equal(t, tc.base, base.MinorUnits())
@@ -76,7 +76,7 @@ func TestReplayInterest(t *testing.T) {
 			require.NoError(t, err)
 			base, err := domain.ParseMoney(currency, tc.base)
 			require.NoError(t, err)
-			got, err := ledger.DailyInterest(base)
+			got, err := interest.Daily(base)
 			require.NoError(t, err)
 			formatted, err := got.Format()
 			require.NoError(t, err)
@@ -101,7 +101,7 @@ func TestRoundedAccrualSums(t *testing.T) {
 			require.NoError(t, err)
 			var accruals []domain.Money
 			for day, base := range tc.bases {
-				accrual, err := ledger.DailyInterest(money(t, currency, base))
+				accrual, err := interest.Daily(money(t, currency, base))
 				require.NoError(t, err)
 				assert.Equal(t, money(t, currency, tc.daily[day]), accrual, "day %d", day+1)
 				accruals = append(accruals, accrual)
@@ -113,53 +113,8 @@ func TestRoundedAccrualSums(t *testing.T) {
 	}
 }
 
-func TestAllocateInstalments(t *testing.T) {
-	for _, currency := range canonicalCurrencies(t) {
-		for _, tc := range []struct {
-			name  string
-			total int64
-			count int
-			want  []int64
-		}{
-			{"E10", 10000, 3, []int64{3333, 3333, 3334}},
-			{"divisible", 9999, 3, []int64{3333, 3333, 3333}},
-			{"multiple residual units", 10001, 3, []int64{3333, 3333, 3335}},
-			{"smaller than count", 2, 3, []int64{0, 0, 2}},
-			{"zero", 0, 3, []int64{0, 0, 0}},
-			{"signed total", -10000, 3, []int64{-3333, -3333, -3334}},
-			{"maximum", math.MaxInt64, 3, []int64{3074457345618258602, 3074457345618258602, 3074457345618258603}},
-			{"minimum", math.MinInt64, 3, []int64{-3074457345618258602, -3074457345618258602, -3074457345618258604}},
-			{"single maximum", math.MaxInt64, 1, []int64{math.MaxInt64}},
-			{"single minimum", math.MinInt64, 1, []int64{math.MinInt64}},
-		} {
-			t.Run(currency.Code()+"/"+tc.name, func(t *testing.T) {
-				total := money(t, currency, tc.total)
-				got, err := ledger.AllocateInstalments(total, tc.count)
-				require.NoError(t, err)
-				want := make([]domain.Money, len(tc.want))
-				for i, minor := range tc.want {
-					want[i] = money(t, currency, minor)
-				}
-				assert.Equal(t, want, got)
-				sum, err := domain.Sum(currency, got...)
-				require.NoError(t, err)
-				assert.Equal(t, total, sum, "allocation must conserve principal")
-			})
-		}
-	}
-}
-
-func TestCalculationErrors(t *testing.T) {
-	got, err := ledger.DailyInterest(domain.Money{})
+func TestInvalidInterestBase(t *testing.T) {
+	got, err := interest.Daily(domain.Money{})
 	require.ErrorIs(t, err, domain.ErrInvalidCurrency)
 	assert.Equal(t, domain.Money{}, got)
-
-	parts, err := ledger.AllocateInstalments(domain.Money{}, 3)
-	require.ErrorIs(t, err, domain.ErrInvalidCurrency)
-	assert.Nil(t, parts)
-	for _, count := range []int{0, -1} {
-		parts, err := ledger.AllocateInstalments(money(t, canonicalCurrencies(t)[0], 10000), count)
-		require.ErrorIs(t, err, ledger.ErrInvalidInstalmentCount)
-		assert.Nil(t, parts)
-	}
 }

@@ -11,6 +11,9 @@ reversals, ordered instalment credits with duplicate rejection, and explicit
 closing/fee reconciliation are implemented. Automatic reconciliation
 after financial submissions, Day 6 finalization, and replay reporting are planned.
 
+The core coordinates focused `posting`, `projection`, and `interest` packages;
+see the [package map](docs/DESIGN.md#packages-and-dependencies).
+
 ## Requirements
 
 Go 1.23.1 or newer, plus Make for the shortcuts below. Tests download their

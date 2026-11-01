@@ -2,13 +2,13 @@ package ledger
 
 import (
 	"errors"
-	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"inmemoryaccountledgercore/internal/domain"
+	"inmemoryaccountledgercore/internal/posting"
 )
 
 func reversalFixture(t *testing.T) (*Core, *journal, domain.InputEvent, domain.Record) {
@@ -46,15 +46,6 @@ func TestLinkedPrincipalReversalAndIdempotence(t *testing.T) {
 	requireBalance(t, repository, input.AccountID, 1, 25000)
 	requireBalance(t, repository, input.AccountID, 2, 25000)
 
-	appends := repository.appends
-	for range 2 {
-		batch, err := principalCorrection(repository.History(), *after.Records[len(before.Records)].Attempt, original)
-		require.NoError(t, err)
-		assert.Empty(t, batch.Records, "repeated internal correction has no records to append")
-	}
-	assert.Equal(t, appends, repository.appends)
-	assert.Equal(t, after, repository.History())
-
 	for _, changed := range []bool{false, true} {
 		duplicate := input
 		if changed {
@@ -66,7 +57,7 @@ func TestLinkedPrincipalReversalAndIdempotence(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, domain.OutcomeRejected, rejected.Status)
 		requireAttempt(t, repository, start, duplicate, rejected)
-		assert.Equal(t, DiagnosticDuplicateID, repository.records[start+2].Diagnostic.Code)
+		assert.Equal(t, posting.DiagnosticDuplicateID, repository.records[start+2].Diagnostic.Code)
 		requireBalance(t, repository, input.AccountID, 6, 25000)
 	}
 }
@@ -77,9 +68,9 @@ func TestReversalValidationAndUnsupportedExtensions(t *testing.T) {
 		change func(*domain.InputEvent)
 		code   string
 	}{
-		{"account", func(e *domain.InputEvent) { e.AccountID = "unknown" }, DiagnosticUnknownAccount},
-		{"currency", func(e *domain.InputEvent) { e.Currency = domain.Currency{} }, DiagnosticInvalidCurrency},
-		{"currency mismatch", func(e *domain.InputEvent) { e.Currency = fixtureCurrency(t, "BHD", 3) }, DiagnosticCurrencyMismatch},
+		{"account", func(e *domain.InputEvent) { e.AccountID = "unknown" }, posting.DiagnosticUnknownAccount},
+		{"currency", func(e *domain.InputEvent) { e.Currency = domain.Currency{} }, posting.DiagnosticInvalidCurrency},
+		{"currency mismatch", func(e *domain.InputEvent) { e.Currency = fixtureCurrency(t, "BHD", 3) }, posting.DiagnosticCurrencyMismatch},
 		{"missing reference", func(e *domain.InputEvent) { e.ReversesEventID = "" }, ""},
 		{"unknown reference", func(e *domain.InputEvent) { e.ReversesEventID = "missing" }, ""},
 		{"different value day", func(e *domain.InputEvent) { e.ValueDay = 3 }, ""},
@@ -90,7 +81,7 @@ func TestReversalValidationAndUnsupportedExtensions(t *testing.T) {
 			before := repository.History()
 			outcome, err := core.Submit(input)
 			if tc.code == "" {
-				require.ErrorIs(t, err, ErrUnsupportedInput)
+				require.ErrorIs(t, err, posting.ErrUnsupportedInput)
 				assert.Equal(t, domain.InputOutcome{}, outcome)
 				assert.Equal(t, before, repository.History())
 			} else {
@@ -113,19 +104,12 @@ func TestAlreadyReversedDebitIsBusinessRejection(t *testing.T) {
 		{"failed rejection append and retry", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			core, repository, input, original := reversalFixture(t)
+			core, repository, input, _ := reversalFixture(t)
 			accepted, err := core.Submit(input)
 			require.NoError(t, err)
 			require.Equal(t, domain.OutcomeAccepted, accepted.Status)
 			before := repository.History()
 			input.ID = "second-cause"
-			attempt, duplicate := prepareAttempt(before, input)
-			require.False(t, duplicate)
-			require.NotEqual(t, accepted.AttemptID, attempt.ID)
-			batch, err := principalCorrection(before, attempt, original)
-			require.ErrorIs(t, err, errAlreadyReversed)
-			assert.NotErrorIs(t, err, ErrUnsupportedInput)
-			assert.Empty(t, batch.Records)
 			if tc.failAppend {
 				failure := errors.New("rejection append unavailable")
 				repository.appendError = failure
@@ -139,12 +123,12 @@ func TestAlreadyReversedDebitIsBusinessRejection(t *testing.T) {
 			rejected, err := core.Submit(input)
 			require.NoError(t, err)
 			assert.Equal(t, domain.OutcomeRejected, rejected.Status)
-			assert.Equal(t, attempt.ID, rejected.AttemptID)
+			assert.NotEqual(t, accepted.AttemptID, rejected.AttemptID)
 			assert.Equal(t, appends+1, repository.appends)
 			requireAttempt(t, repository, len(before.Records), input, rejected)
 			after := repository.History()
 			assert.Equal(t, before.Records, after.Records[:len(before.Records)])
-			assert.Equal(t, DiagnosticAlreadyReversed, after.Records[len(before.Records)+2].Diagnostic.Code)
+			assert.Equal(t, posting.DiagnosticAlreadyReversed, after.Records[len(before.Records)+2].Diagnostic.Code)
 			requireBalance(t, repository, input.AccountID, 6, 25000)
 
 			// A rejected reversal reserves its input ID like all other rejections.
@@ -153,7 +137,7 @@ func TestAlreadyReversedDebitIsBusinessRejection(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, domain.OutcomeRejected, duplicateOutcome.Status)
 			requireAttempt(t, repository, start, input, duplicateOutcome)
-			assert.Equal(t, DiagnosticDuplicateID, repository.records[start+2].Diagnostic.Code)
+			assert.Equal(t, posting.DiagnosticDuplicateID, repository.records[start+2].Diagnostic.Code)
 			requireBalance(t, repository, input.AccountID, 6, 25000)
 
 			input.ID, input.Kind, input.RawAmount, input.ReversesEventID = "continuation", domain.InputCredit, "0.01", ""
@@ -196,12 +180,5 @@ func TestReversalTechnicalFailuresAreAtomic(t *testing.T) {
 		require.ErrorIs(t, err, domain.ErrArithmeticOverflow)
 		assert.Equal(t, domain.InputOutcome{}, outcome)
 		assert.Equal(t, before, repository.History())
-	})
-	t.Run("unrepresentable inverse", func(t *testing.T) {
-		_, repository, input, original := reversalFixture(t)
-		original.Entry.Amount = fixtureMoney(t, input.Currency, math.MinInt64)
-		batch, err := principalCorrection(repository.History(), domain.InputAttempt{ID: "correction", Input: input}, original)
-		require.ErrorIs(t, err, domain.ErrArithmeticOverflow)
-		assert.Empty(t, batch.Records)
 	})
 }

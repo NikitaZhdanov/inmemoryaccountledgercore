@@ -4,10 +4,12 @@ Status: P01–P08 implemented for their specified workflows; P09–P14 remain pl
 Money, calculation, repository, projection, configuration, posting, authorization,
 settlement, reversal, instalment, and explicit closing/reconciliation tests exist,
 including real-component integration; automatic historical reconciliation, full
-replay, and the required failing design test remain pending.
+replay, and the required failing design test remain pending. The package split
+under [A16](../AMBIGUITIES.md#a16--ledger-package-boundaries) changes ownership
+without advancing those remaining tasks.
 
 [TASK](TASK.md) preserves the assignment; [SPEC](SPEC.md) defines agreed behavior;
-[DESIGN](DESIGN.md) proposes its Go implementation; [USE_CASES](USE_CASES.md)
+[DESIGN](DESIGN.md) defines its Go architecture; [USE_CASES](USE_CASES.md)
 defines verification scenarios. This plan schedules that work without changing
 business decisions, numerical oracles, or [criterion verdicts](../REJECTED.md).
 
@@ -80,12 +82,13 @@ compose real components before the scenario runner exists.
 
 ### P02 — Exact interest rounding and conserving allocation
 
-- **Status:** Implemented as pure functions in
-  [`internal/ledger`](../internal/ledger/calculations.go), with adjacent
-  [unit tests](../internal/ledger/calculations_test.go), using shared
+- **Status:** Implemented in [daily interest](../internal/interest/interest.go)
+  and [private posting allocation](../internal/posting/instalments.go), with
+  adjacent [interest](../internal/interest/interest_test.go) and
+  [allocation tests](../internal/posting/allocation_test.go), using shared
   [domain rounding](../internal/domain/rounding.go). Posting, accrual state,
   and capitalization remain in their scheduled tasks.
-- **Scope:** Introduce `internal/ledger` with pure policy functions using domain
+- **Scope:** Add pure interest and posting-allocation functions using domain
   money operations. Add positive-base daily interest calculation using the exact
   rate denominator and quotient/remainder HALF_EVEN rounding. Add the integer
   instalment allocation needed by E10, assigning its remainder to the last
@@ -129,14 +132,14 @@ compose real components before the scenario runner exists.
 
 ### P04 — Rebuild balances and recorded state from history
 
-- **Status:** Implemented in [ledger projections](../internal/ledger/projection.go)
-  with adjacent [direct-fixture tests](../internal/ledger/projection_test.go).
+- **Status:** Implemented in [history projections](../internal/projection/projection.go)
+  with adjacent [direct-fixture tests](../internal/projection/projection_test.go).
   Explicit record prefixes, checked value-date balances and fee exclusions,
   recorded authorization state/holds, signed fee nets, closed days, and derived
   daily/unpaid accruals are covered. Rebuilds own their history and preserve
   original decisions. Submission/append integration and chronological fee
   reconciliation remain in P05–P09; these tests do not execute the replay.
-- **Scope:** In `internal/ledger`, add checked value-date balance queries over
+- **Scope:** In `internal/projection`, add checked value-date balance queries over
   detached history and disposable projections for authorization lifecycle/active
   holds, fee net effects, unpaid daily accruals, and closed-day tracking. Support
   explicit observation prefixes and fee exclusions needed by later reconciliation and
@@ -152,7 +155,8 @@ compose real components before the scenario runner exists.
 ### P05 — Ordinary input processing, validation, and duplicate rejection
 
 - **Status:** Implemented in [core initialization](../internal/ledger/core.go)
-  and [submission handling](../internal/ledger/submission.go), with adjacent
+  and [submission commits](../internal/ledger/submission.go), with
+  [posting preparation](../internal/posting/submission.go) and adjacent
   configuration/submission tests and [posting integration](../tests/replay/ordinary_test.go).
   Configuration is validated and copied before account records are appended.
   Ordinary attempts retain source fields and append outcomes, postings, or
@@ -161,7 +165,7 @@ compose real components before the scenario runner exists.
   later value dates. Amount signs follow [A10](../AMBIGUITIES.md#a10--ordinary-input-amount-signs).
   Authorization and settlement follow in P06; reversal, instalments, and
   reconciliation remain scheduled in P07–P09.
-- **Scope:** In `internal/ledger`, implement submission handling for credits/debits,
+- **Scope:** In `internal/posting`, prepare credit/debit batches for ledger commits,
   exact monetary validation, original input retention, unique attempt identities,
   outcomes, and diagnostics. Reject every reused event ID before any
   event-triggered effects, regardless of original outcome or payload equality. Compute a batch
@@ -186,8 +190,9 @@ compose real components before the scenario runner exists.
 
 ### P06 — Authorization decisions and final settlement
 
-- **Status:** Implemented in [authorization handling](../internal/ledger/authorization.go)
-  with adjacent [unit tests](../internal/ledger/authorization_test.go) and
+- **Status:** Implemented in [authorization handling](../internal/posting/authorization.go)
+  with [builder tests](../internal/posting/authorization_test.go),
+  [ledger workflow tests](../internal/ledger/authorization_test.go) and
   [E1–E6 integration](../tests/replay/authorization_test.go). Decisions use posted
   availability; final settlement atomically debits the settlement amount and
   releases the linked full hold. Unknown-ID rejection, duplicate outcomes,
@@ -196,7 +201,7 @@ compose real components before the scenario runner exists.
   Zero amounts pass validation and negative amounts reject under
   [resolved A15](../AMBIGUITIES.md#a15--authorization-and-settlement-amount-signs).
   Deferred workflows return a technical error without an attempt.
-- **Scope:** In `internal/ledger`, add event-checkpoint availability,
+- **Scope:** In `internal/posting`, add event-checkpoint availability,
   approval/decline transitions, active holds, E5 final settlement, full hold
   release, and E6 unknown-ID rejection. Use posted fees in availability and
   exclude unpaid interest.
@@ -212,9 +217,9 @@ compose real components before the scenario runner exists.
 
 ### P07 — Linked reversal and instalment posting
 
-- **Status:** Implemented in [principal corrections](../internal/ledger/corrections.go)
-  and [instalment posting](../internal/ledger/instalments.go), with adjacent
-  unit tests and [real-component integration](../tests/replay/corrections_test.go).
+- **Status:** Implemented in [principal corrections](../internal/posting/corrections.go)
+  and [instalment posting](../internal/posting/instalments.go), with adjacent
+  builder tests, ledger workflow tests, and [real-component integration](../tests/replay/corrections_test.go).
   E9 derives E7's inverse from the stored debit, preserving its original record
   and value day. Internal correction repeats produce no records; duplicate E9/E10
   inputs reject before effects. Fresh attempts to reverse an already reversed
@@ -222,7 +227,7 @@ compose real components before the scenario runner exists.
   batch. Tests cover retained source fields, currency isolation, exact totals,
   and technical-failure atomicity. P08 covers fee refunds and closed-day accrual
   restoration with controlled fixtures; full E7/E8/E9 integration remains in P09.
-- **Scope:** In `internal/ledger`, add E9's principal reversal linked to E7,
+- **Scope:** In `internal/posting`, add E9's principal reversal linked to E7,
   retaining the original record and using booking Day 6/value Day 2. Add E10's
   ordered instalment entries with its original Day 5 dates. Separate
   recorded-input duplication from idempotent internal posting/correction causes.
@@ -335,7 +340,7 @@ compose real components before the scenario runner exists.
 - **Scope:** Add pure projection/formatting in `internal/report`, with unit tests
   beside the package. In `cmd/replay/main.go`, construct a fresh memory repository,
   inject it into ledger, invoke scenario with that core, pass detached history
-  and read-only projections to report, and print the agreed final daily table.
+  and read-only history projections to report, and print the agreed final daily table.
   Compose AED/2 and BHD/3 descriptors, zero opening accounts, AED 25.00 policy,
   and explicit BHD no-fee policy in main. Pass configuration to initialization
   and descriptors to scenario; propagate initialization errors before replay/report.
@@ -357,7 +362,7 @@ compose real components before the scenario runner exists.
   composition; report does not mutate ledger state or construct dependencies.
   Composition checks confirm exact descriptor/charge values and required policy
   coverage; core constructor failure prevents replay/report. No concrete currency
-  constants or switches appear in domain/ledger, and scenario defines no defaults.
+  constants or switches appear in domain or business packages, and scenario defines no defaults.
   `go list -deps ./...` succeeds and its import graph matches DESIGN without cycles.
 
 ### P13 — Investigate and preserve a genuine failing design test

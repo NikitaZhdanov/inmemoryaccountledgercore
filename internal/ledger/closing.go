@@ -3,9 +3,11 @@ package ledger
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 
 	"inmemoryaccountledgercore/internal/domain"
+	"inmemoryaccountledgercore/internal/projection"
 )
 
 var ErrInvalidReconciliation = errors.New("invalid close or reconciliation request")
@@ -40,7 +42,7 @@ func (c *Core) ReconcileClosedDays(id domain.AccountID, fromDay, bookingDay doma
 
 func (c *Core) validateReconciliation(id domain.AccountID, day, bookingDay domain.Day, cause domain.RecordKey) error {
 	if _, exists := c.accounts[id]; !exists {
-		return fmt.Errorf("%w: %q", ErrUnknownAccount, id)
+		return fmt.Errorf("%w: %q", projection.ErrUnknownAccount, id)
 	}
 	if day < 1 || bookingDay < 1 || cause == "" {
 		return ErrInvalidReconciliation
@@ -50,15 +52,15 @@ func (c *Core) validateReconciliation(id domain.AccountID, day, bookingDay domai
 
 func (c *Core) reconcileDays(id domain.AccountID, fromDay, closeDay, bookingDay domain.Day, cause domain.RecordKey) error {
 	history := c.repository.History()
-	projection, err := Rebuild(history, len(history.Records))
+	state, err := projection.Rebuild(history, len(history.Records))
 	if err != nil {
 		return err
 	}
-	days, err := projection.ClosedDays(id)
+	days, err := state.ClosedDays(id)
 	if err != nil {
 		return err
 	}
-	newClose := closeDay != 0 && !projection.closed[accountDay{id, closeDay}]
+	newClose := closeDay != 0 && !slices.Contains(days, closeDay)
 	if newClose {
 		days = append(days, closeDay)
 		sort.Slice(days, func(i, j int) bool { return days[i] < days[j] })
@@ -69,11 +71,11 @@ func (c *Core) reconcileDays(id domain.AccountID, fromDay, closeDay, bookingDay 
 		}
 		// Every day observes earlier committed fee corrections.
 		history = c.repository.History()
-		projection, err = Rebuild(history, len(history.Records))
+		state, err = projection.Rebuild(history, len(history.Records))
 		if err != nil {
 			return err
 		}
-		batch, err := c.feeBatch(history, projection, id, day, bookingDay, cause)
+		batch, err := c.feeBatch(history, state, id, day, bookingDay, cause)
 		if err != nil {
 			return err
 		}
@@ -86,7 +88,7 @@ func (c *Core) reconcileDays(id domain.AccountID, fromDay, closeDay, bookingDay 
 		if len(batch.Records) == 0 {
 			continue
 		}
-		if err := validatePosting(history, batch, domain.InputEvent{AccountID: id, ValueDay: day}); err != nil {
+		if err := projection.ValidateBatch(history, batch, id, day); err != nil {
 			return err
 		}
 		if err := c.repository.Append(batch); err != nil {
@@ -96,8 +98,8 @@ func (c *Core) reconcileDays(id domain.AccountID, fromDay, closeDay, bookingDay 
 	return nil
 }
 
-func (c *Core) feeBatch(history domain.History, projection *Projection, id domain.AccountID, day, bookingDay domain.Day, cause domain.RecordKey) (domain.Batch, error) {
-	base, err := projection.Balance(id, day, BalanceOptions{ExcludeFeeDay: day})
+func (c *Core) feeBatch(history domain.History, state *projection.Projection, id domain.AccountID, day, bookingDay domain.Day, cause domain.RecordKey) (domain.Batch, error) {
+	base, err := state.Balance(id, day, projection.BalanceOptions{ExcludeFeeDay: day})
 	if err != nil {
 		return domain.Batch{}, err
 	}
@@ -111,7 +113,7 @@ func (c *Core) feeBatch(history domain.History, projection *Projection, id domai
 			return domain.Batch{}, err
 		}
 	}
-	net, err := projection.FeeNet(id, day)
+	net, err := state.FeeNet(id, day)
 	if err != nil {
 		return domain.Batch{}, err
 	}

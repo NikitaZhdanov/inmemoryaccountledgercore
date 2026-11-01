@@ -9,25 +9,30 @@ belong to [DEVELOPMENT](DEVELOPMENT.md).
 
 ## Packages and dependencies
 
-Production code uses the Go standard library. Composition is in `cmd/replay/main.go`.
-The table lists allowed imports within this module.
+Production code uses the Go standard library. The table lists allowed imports
+within this module. Report, scenario, and executable composition remain planned.
+The split follows [A16](../AMBIGUITIES.md#a16--ledger-package-boundaries).
 
 | Package | Responsibility | Allowed internal imports |
 | --- | --- | --- |
-| `internal/domain` | Shared models, currency and money values, exact parsing/formatting, checked arithmetic, ratio rounding. | None. |
-| `internal/ledger` | Input decisions, balance/state projections, interest/allocation policy, reconciliation, closing, and the repository interface. | `domain` |
+| `internal/domain` | Shared records, currency/money values, exact parsing/formatting, checked arithmetic, ratio rounding. | None. |
+| `internal/interest` | Positive-base daily interest policy and HALF_EVEN accrual calculation. | `domain` |
+| `internal/projection` | Read-only history rebuilds, balances, holds, fee nets, accruals, and proposed-batch arithmetic checks. | `domain`, `interest` |
+| `internal/posting` | Pure input validation/decisions and batch construction, including authorizations, settlements, reversals, and instalment allocation. | `domain`, `projection` |
+| `internal/ledger` | Validated configuration, submission commits, chronological closing/reconciliation, and the consumer-owned repository interface. | `domain`, `posting`, `projection` |
 | `internal/repository/memory` | Append-only storage, detached history, record-key validation, atomic batches. | `domain` |
-| `internal/report` | Pure report projection and formatting from detached history and read-only ledger queries/projections. | `domain`, `ledger` |
-| `internal/scenario` | Canonical inputs and explicit close sequencing against an injected core. | `domain`, `ledger` |
-| `cmd/replay` | Construct storage, currencies/accounts/policies, and core; run scenario; supply finalized data to report and print output. | `domain`, `ledger`, `repository/memory`, `report`, `scenario` |
+| `internal/report` (planned) | Pure report projection and formatting from detached history and read-only projections. | `domain`, `projection` |
+| `internal/scenario` (planned) | Canonical inputs and explicit close sequencing against an injected core. | `domain`, `ledger` |
+| `cmd/replay` (planned) | Construct storage/configuration/core, run scenario, and supply finalized history/projections to report. | `domain`, `ledger`, `projection`, `repository/memory`, `report`, `scenario` |
 
-Imports point toward `domain`; no internal package imports the executable.
-Ledger does not import its storage adapter, scenario, or report. Memory
-implements the ledger-owned interface structurally through shared domain types
-without importing ledger; composition checks conformance. Scenario constructs no
-repository and produces no report. Report constructs no core or repository,
-runs no scenario, and changes no financial state. Ordinary functions and small
-structs keep this graph acyclic without dependency injection tooling.
+Imports point toward `domain`; the graph is acyclic. Ledger owns all workflow
+commits and does not import its storage adapter. Posting, projection, and interest
+have no repository dependency and cannot append history. Memory implements the
+ledger-owned interface structurally through domain types without importing ledger;
+composition checks conformance. Scenario constructs no repository or report.
+Report constructs no core or repository and changes no financial state. Ordinary
+functions and small structs provide these boundaries without new interfaces or
+dependency injection tooling.
 
 ## Domain models and ownership
 
@@ -43,7 +48,7 @@ structs keep this graph acyclic without dependency injection tooling.
 | Rebuildable state | Balances, active holds/current authorization lookup, fee net effects, rounded unpaid accrual per account/day, closed-day tracking. |
 
 Shared history records, batches, and snapshots belong to `domain`; disposable
-business projections belong to `ledger`; presentation rows belong to `report`.
+business projections belong to `projection`; presentation rows belong to `report`.
 History is authoritative. Projection rebuilds retain recorded authorization
 decisions rather than reevaluating them. Stored slices/maps remain private;
 defensive copies on submission and read-back, including nested mutable data,
@@ -58,14 +63,17 @@ across payload types. API fields and link semantics are documented in code.
 
 ## History projections
 
-[Ledger projections](../internal/ledger/projection.go) own a cloned record prefix
+[History projections](../internal/projection/projection.go) own a cloned record prefix
 and private derived indexes. Balance scans retain append order while selecting
 by value date; authorization indexes retain recorded transitions. Closed-day
 accruals are recalculated from posted balances rather than persisted as entries.
 Rebuilding returns no partial projection on arithmetic failure; individual
 balance/availability queries also propagate checked arithmetic errors. Projection
 APIs and exclusion options are documented in code. Projections have no repository
-dependency and cannot append records; submission and reconciliation own appends.
+dependency and cannot append records; ledger submission and reconciliation own appends.
+[Proposed-batch validation](../internal/projection/validation.go) checks a copied
+history plus the candidate records at each affected value-date checkpoint. It
+returns only an error and preserves the caller's history and backing slice.
 
 ## Money representation
 
@@ -76,7 +84,7 @@ Go zero values. Descriptor validation and compatibility follow
 bounds justified in [NUMBERS](../NUMBERS.md#configurable-currency-verification).
 The scale limit bounds decimal unit factors and formatting padding while retaining
 the full signed minor-unit range.
-Domain and ledger contain no currency-code constants, switches, or defaults.
+Domain and business packages contain no currency-code constants, switches, or defaults.
 
 Parse decimal text exactly into minor units, retaining the original text in the
 input record. Format directly from integers at the descriptor's scale, including
@@ -90,11 +98,11 @@ Interest uses integer quotient/remainder division by the
 and quotient parity implement HALF_EVEN without a potentially overflowing
 balance-times-rate intermediate. Shared signed integer ratio rounding belongs to
 the standalone [domain rounding function](../internal/domain/rounding.go);
-ledger daily interest owns the rate and positive-base policy. The rounding
-primitive is independent of currencies and can serve other calculated amounts.
-Instalment allocation uses integer quotient and
-residual under the [allocation rule](SPEC.md#instalments). No binary floating
-point, decimal context, or tolerance is used.
+[Daily interest](../internal/interest/interest.go) owns the rate and positive-base
+policy. The rounding primitive is independent of currencies and can serve other calculated amounts.
+[Posting allocation](../internal/posting/instalments.go) is private to its caller
+and uses integer quotient and residual under the [allocation rule](SPEC.md#instalments).
+No binary floating point, decimal context, or tolerance is used.
 
 The [currency](../internal/domain/currency.go) and
 [money](../internal/domain/money.go) code own API signatures and error sentinels;
@@ -113,7 +121,9 @@ implicit zero charge. Accounts and policies are copied into detached, core-owned
 configuration; callers cannot change replay behavior through retained containers.
 Account records are appended in supplied order in one initialization batch after
 validation. Initialization uses a fresh repository; core configuration owns
-account identity and policy lookup, while history owns financial state.
+account identity and policy lookup for closing, while history owns financial state.
+Posting receives only the selected configured account value from the core;
+it receives no configuration map or storage handle.
 The [configuration helpers](../internal/ledger/configuration.go) first validate
 distinct currency descriptors collected from accounts and policy keys, including
 code/scale consistency. Separate account and policy passes then check and copy
@@ -163,23 +173,25 @@ the contract.
 
 Scenario submits inputs in supplied order and invokes explicit closes from
 [SPEC history and replay](SPEC.md#history-and-replay). Booking-date changes do
-not trigger closes. Ledger validates identity and amounts, computes the outcome,
-and appends the corresponding input, outcome, monetary, and authorization
-records according to [SPEC](SPEC.md).
+not trigger closes. Posting validates identity and amounts and computes the
+outcome; ledger appends the corresponding input, outcome, monetary, and
+authorization records according to [SPEC](SPEC.md).
 
-[Submission](../internal/ledger/submission.go) scans stored attempts to
+[Posting preparation](../internal/posting/submission.go) scans stored attempts to
 reject reused event IDs before dispatch. Committed attempt count supplies fresh
-sequential identities independent of supplied IDs/order. A proposed posting
-history is rebuilt and checked at every affected value-date checkpoint before
-append; this catches overflow at later postings as well as the input's own day.
-No candidate projection becomes authoritative before storage commits it.
-Posting validation copies the record slice into a new backing array before
-appending proposed records, preserving other views of the supplied history.
-Batch builders have no storage side effects. Prepared submissions and early
-rejections share one commit helper, which appends each batch once and returns
-its outcome only after a successful append.
+sequential identities independent of supplied IDs/order. It validates accounts,
+currencies, and amounts, then builds an entire batch without modifying history.
+Proposed-history checks catch overflow at later value dates as well as the input's
+own day. Early business rejections return their diagnostic batch; technical
+failures return no batch or outcome.
 
-[Authorization handling](../internal/ledger/authorization.go) computes decisions
+[Ledger submission](../internal/ledger/submission.go) supplies committed history and the configured
+account value to posting preparation and appends the returned batch once. An outcome is returned
+only after that commit succeeds. Error sentinels and diagnostic codes for input
+processing belong to posting; observation errors and query types belong to
+projection. Callers import those owners directly.
+
+[Authorization handling](../internal/posting/authorization.go) computes decisions
 from the committed projection and builds transitions without changing it.
 Settlement batches contain one debit and a final transition linked to the
 original approval. Declines retain the requested amount and a linked diagnostic,
@@ -189,7 +201,7 @@ authorization IDs, authorizations with differing dates, inactive-ID settlements,
 and over-captures. Shared submission validation enforces the amount-sign rule in
 [SPEC](SPEC.md#monetary-validation-and-errors) before building transitions or postings.
 
-[Principal correction](../internal/ledger/corrections.go) resolves the first
+[Principal correction](../internal/posting/corrections.go) resolves the first
 attempt for the referenced event to its stored debit. The inverse uses checked
 negation, retains the original value day, and links both the original entry and
 the reversal attempt. Its key derives from the original entry; repeating the
@@ -200,7 +212,7 @@ missing or other targets return ErrUnsupportedInput without records. A different
 cause for an already reversed debit yields a business error that the reversal
 batch builder converts to the shared attempt/outcome/diagnostic rejection batch.
 
-[Instalment posting](../internal/ledger/instalments.go) uses the pure allocation
+[Instalment posting](../internal/posting/instalments.go) uses its private allocation
 function and constructs ordered credits keyed by source event and one-based
 position. All parts retain the input dates, currency, count, and attempt link,
 and share the submission's single validated atomic batch. Positive credit counts
@@ -215,8 +227,9 @@ committed history before each day so earlier fee corrections carry forward.
 An original assessment key derives from account/day; later refund/adjustment keys
 derive from that obligation and correction cause and link to the original
 assessment. Required-net equality skips append entirely. Proposed batches use
-the same projection and affected-value-date checks as submissions. The existing
-projection rebuild derives corrected daily accruals without stored accrual records.
+the same projection and affected-value-date checks as posting preparation.
+Closed-day membership uses the projection's public query; closing has no access
+to its private indexes. Projection rebuilding derives corrected daily accruals without stored accrual records.
 API parameters, supported days, and validation are documented in code.
 
 The replay owns its close schedule and capitalization checkpoint. Ordinary
@@ -245,7 +258,7 @@ its own interest base. The corrected daily accrual sum becomes one credit per
 account/window. Unchanged repeated reconciliation or finalization appends nothing;
 no iterative solver or provisional fee is needed.
 
-After finalization, main supplies detached history and read-only ledger
+After finalization, main supplies detached history and read-only history
 projections to report. Report reconstructs recorded authorization lifecycle and
 formats rows in supplied day/account order under
 [reporting and observations](SPEC.md#reporting-and-observations).
