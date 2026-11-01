@@ -36,6 +36,12 @@ review its diff. The separately tagged failing test is excluded from normal
 checks. Completion checks below define requirements; actual outcomes belong in
 [WORKLOG](../WORKLOG.md).
 
+The human subsequently requested Testify assertions for unit tests. Use Go's
+`testing` runner with Testify `require` for prerequisites and `assert` for
+independent results; preserve exact, type-sensitive money expectations. This
+supersedes the original standard-library-only test dependency choice without
+adding production dependencies; see [A13](../AMBIGUITIES.md#a13--testify-unit-test-assertions).
+
 Follow the [package/import map](DESIGN.md#small-code-layout): `internal/domain`
 owns shared models and money; `internal/ledger` owns business logic and the small
 repository interface; `internal/repository/memory` owns storage; `internal/report`
@@ -60,10 +66,12 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
 
 - **Status:** Implemented in [`internal/domain`](../internal/domain/money.go),
   with adjacent [unit tests](../internal/domain/money_test.go). Go 1.23.1 module
-  baseline; standard library only. Submission diagnostics and raw-input retention
-  remain in their later tasks.
+  baseline; standard library for production and Testify for unit tests following
+  the human's later request. Submission diagnostics and raw-input retention remain
+  in their later tasks.
 - **Scope:** Create the module and `internal/domain` package using the standard
-  library only; record the actual Go toolchain and module baseline. Add currency
+  library for production and Testify for unit tests; record the actual Go toolchain
+  and module baseline. Add currency
   scales, `int64` minor-unit money, exact decimal parsing/formatting, currency
   checks, and checked addition, subtraction, negation, and accumulation. Retain
   raw amount text at the later input-record boundary. Distinguish input

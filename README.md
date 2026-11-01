@@ -16,9 +16,12 @@ and replay/report are still pending P02–P14.
 - [Repository instructions](AGENTS.md)
 
 Use Go 1.23.1 or newer; implementation was checked with `go1.23.1 darwin/amd64`.
-The module baseline is `go 1.23.1`. The core uses only the Go standard library,
-so its tests need no dependency installation, service, or configuration. From
-the repository root, run:
+The module baseline is `go 1.23.1`. Production code uses only the Go standard
+library; unit tests use pinned [Testify](https://github.com/stretchr/testify)
+`assert` and `require` with Go's `testing` runner. Module dependencies and checksums
+are recorded in [go.mod](go.mod) and [go.sum](go.sum). The first test run needs
+network access to download test dependencies; no services or configuration are
+needed. From the repository root, run:
 
 ```sh
 go test ./internal/domain
@@ -52,12 +55,12 @@ remains sufficient for the ordinary core tests above. Local `make check` and
 | `make coverage` | Run race tests, then print per-function coverage; no arbitrary threshold |
 | `make build` / `make vet` | Build packages / run Go's static analyzer |
 | `make lint` | Run pinned [Staticcheck](https://staticcheck.dev/docs/getting-started/) |
-| `make vuln` | Run pinned [govulncheck](https://go.dev/doc/security/vuln/) against the selected Go toolchain and dependencies |
+| `make vuln` | Run pinned [govulncheck](https://go.dev/doc/security/vuln/) against the selected Go toolchain and dependencies, including tests |
 | `make help` | List targets |
 
 The workflow runs one Linux job on current stable Go for pushes, pull requests,
 manual dispatch, and weekly Monday checks. It calls `make ci`, caches Go modules
-and builds using `go.mod`, and uses read-only repository permissions. Weekly
+and builds using `go.mod`/`go.sum`, and uses read-only repository permissions. Weekly
 [Dependabot](.github/dependabot.yml) updates maintain release-SHA pins for the
 two official GitHub Actions; analyzer pins are updated explicitly in Makefile.
 An old toolchain can produce real standard-library vulnerability findings; upgrade

@@ -9,8 +9,10 @@ mechanisms without changing agreed decisions, numerical oracles, or
 
 ## Language and tooling
 
-Use Go, a Go module, and the standard library only: `strconv` for integer parsing,
-`testing` for tests, and `fmt`/`strings` for text. P01 uses module
+Use Go, a Go module, and the standard library for production: `strconv` for integer
+parsing and `fmt`/`strings` for text. Unit tests use Go's `testing` runner with
+Testify `assert`/`require`, as subsequently requested by the human; see
+[A13](../AMBIGUITIES.md#a13--testify-unit-test-assertions). P01 uses module
 `inmemoryaccountledgercore`, baseline Go 1.23.1, observed toolchain
 `go1.23.1 darwin/amd64`, and `gofmt`, `go test`, and `go vet`.
 No services, dependency framework, or storage setup.

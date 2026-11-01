@@ -1,9 +1,11 @@
 package domain_test
 
 import (
-	"errors"
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"inmemoryaccountledgercore/internal/domain"
 )
@@ -11,9 +13,7 @@ import (
 func money(t *testing.T, currency domain.Currency, minor int64) domain.Money {
 	t.Helper()
 	m, err := domain.NewMoney(currency, minor)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return m
 }
 
@@ -27,21 +27,18 @@ func TestCurrencyAndConstruction(t *testing.T) {
 	} {
 		t.Run(string(tc.currency), func(t *testing.T) {
 			scale, err := tc.currency.Scale()
-			if err != nil || scale != tc.scale {
-				t.Fatalf("Scale() = %d, %v; want %d, nil", scale, err, tc.scale)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.scale, scale)
 			for _, minor := range []int64{math.MinInt64, 0, math.MaxInt64} {
 				m := money(t, tc.currency, minor)
-				if m.Currency() != tc.currency || m.MinorUnits() != minor {
-					t.Fatalf("constructor lost units/currency: %+v", m)
-				}
+				assert.Equal(t, tc.currency, m.Currency())
+				assert.Equal(t, minor, m.MinorUnits())
 			}
 		})
 	}
 	for _, currency := range []domain.Currency{"", "USD"} {
-		if _, err := currency.Scale(); !errors.Is(err, domain.ErrInvalidCurrency) {
-			t.Errorf("Scale(%q): %v", currency, err)
-		}
+		_, err := currency.Scale()
+		require.ErrorIs(t, err, domain.ErrInvalidCurrency)
 		m, err := domain.NewMoney(currency, 0)
 		assertMoneyError(t, m, err, domain.ErrInvalidCurrency)
 		m, err = domain.ParseMoney(currency, "0")
@@ -92,12 +89,9 @@ func TestParseMoney(t *testing.T) {
 	} {
 		t.Run(string(tc.currency)+"/"+tc.raw, func(t *testing.T) {
 			got, err := domain.ParseMoney(tc.currency, tc.raw)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got.Currency() != tc.currency || got.MinorUnits() != tc.minor {
-				t.Fatalf("ParseMoney() = %+v; want %s %d minor units", got, tc.currency, tc.minor)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.currency, got.Currency())
+			assert.Equal(t, tc.minor, got.MinorUnits())
 		})
 	}
 }
@@ -123,9 +117,8 @@ func TestParseMoneyRepresentabilityErrors(t *testing.T) {
 		t.Run(string(tc.currency)+"/"+tc.raw, func(t *testing.T) {
 			got, err := domain.ParseMoney(tc.currency, tc.raw)
 			assertMoneyError(t, got, err, tc.wantErr)
-			if errors.Is(err, domain.ErrArithmeticOverflow) {
-				t.Fatal("input representation failure classified as derived overflow")
-			}
+			assert.NotErrorIs(t, err, domain.ErrArithmeticOverflow,
+				"input representation failure classified as derived overflow")
 		})
 	}
 }
@@ -171,15 +164,14 @@ func TestMoneyFormat(t *testing.T) {
 	} {
 		t.Run(string(tc.currency)+"/"+tc.want, func(t *testing.T) {
 			got, err := money(t, tc.currency, tc.minor).Format()
-			if err != nil || got != tc.want {
-				t.Fatalf("Format() = %q, %v; want %q, nil", got, err, tc.want)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
 		})
 	}
 	var invalid domain.Money
-	if got, err := invalid.Format(); got != "" || !errors.Is(err, domain.ErrInvalidCurrency) {
-		t.Fatalf("zero-value Format() = %q, %v; want empty text and invalid currency", got, err)
-	}
+	got, err := invalid.Format()
+	require.ErrorIs(t, err, domain.ErrInvalidCurrency)
+	assert.Empty(t, got)
 }
 
 func TestCheckedArithmetic(t *testing.T) {
@@ -218,14 +210,12 @@ func TestCheckedArithmetic(t *testing.T) {
 					got, err := tc.op(money(t, currency, tc.a), money(t, currency, tc.b))
 					if tc.overflow {
 						assertMoneyError(t, got, err, domain.ErrArithmeticOverflow)
-						if errors.Is(err, domain.ErrAmountOutOfRange) {
-							t.Fatal("derived overflow classified as invalid input")
-						}
+						assert.NotErrorIs(t, err, domain.ErrAmountOutOfRange,
+							"derived overflow classified as invalid input")
 						return
 					}
-					if err != nil || got != money(t, currency, tc.want) {
-						t.Fatalf("operation = %+v, %v; want %d %s minor units", got, err, tc.want, currency)
-					}
+					require.NoError(t, err)
+					assert.Equal(t, money(t, currency, tc.want), got)
 				})
 			}
 			for _, tc := range []struct{ input, want int64 }{
@@ -233,9 +223,8 @@ func TestCheckedArithmetic(t *testing.T) {
 				{math.MaxInt64, math.MinInt64 + 1}, {math.MinInt64 + 1, math.MaxInt64},
 			} {
 				got, err := money(t, currency, tc.input).Neg()
-				if err != nil || got != money(t, currency, tc.want) {
-					t.Fatalf("Neg(%d) = %+v, %v; want %d", tc.input, got, err, tc.want)
-				}
+				require.NoError(t, err, "Neg(%d)", tc.input)
+				assert.Equal(t, money(t, currency, tc.want), got, "Neg(%d)", tc.input)
 			}
 			got, err := money(t, currency, math.MinInt64).Neg()
 			assertMoneyError(t, got, err, domain.ErrArithmeticOverflow)
@@ -268,9 +257,8 @@ func TestSum(t *testing.T) {
 					assertMoneyError(t, got, err, domain.ErrArithmeticOverflow)
 					return
 				}
-				if err != nil || got != money(t, currency, tc.want) {
-					t.Fatalf("Sum() = %+v, %v; want %d %s minor units", got, err, tc.want, currency)
-				}
+				require.NoError(t, err)
+				assert.Equal(t, money(t, currency, tc.want), got)
 			})
 		}
 	}
@@ -309,10 +297,6 @@ func TestCurrencyChecksOnOperations(t *testing.T) {
 
 func assertMoneyError(t *testing.T, got domain.Money, err, wantErr error) {
 	t.Helper()
-	if !errors.Is(err, wantErr) {
-		t.Fatalf("error = %v; want %v", err, wantErr)
-	}
-	if got != (domain.Money{}) {
-		t.Fatalf("error returned a partial monetary result: %+v", got)
-	}
+	require.ErrorIs(t, err, wantErr)
+	assert.Equal(t, domain.Money{}, got, "error returned a partial monetary result")
 }

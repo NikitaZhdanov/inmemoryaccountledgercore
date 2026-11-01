@@ -28,6 +28,8 @@ jobs:
         with:
           go-version: stable
           cache: true
-          cache-dependency-path: go.mod
+          cache-dependency-path: |
+            go.mod
+            go.sum
       - name: Run checks
         run: make ci
