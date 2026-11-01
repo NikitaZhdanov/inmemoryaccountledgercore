@@ -31,12 +31,14 @@ go mod download
 go test ./internal/domain
 go test ./internal/ledger
 go test ./internal/repository/memory
+go test ./tests/replay
 go test ./...
 go vet ./...
 ```
 
-The focused commands run money, calculation/projection, and repository unit tests;
-`go test ./...` runs all implemented tests. Success prints `ok`; vet is silent on success. A failing
+The focused commands run money, ledger, and repository unit tests plus ordinary
+posting integration; `go test ./...` runs all implemented tests.
+Success prints `ok`; vet is silent on success. A failing
 assertion or check returns a nonzero exit status. The money tests use literal
 expected values for configurable precision, trailing zeros, signed endpoints,
 code/scale compatibility, and overflow, including intermediate accumulation.
@@ -48,7 +50,10 @@ They do not execute the later duplicate-input or other ledger policies.
 Projection tests use literal history records to check observation prefixes,
 value-date balances, fee exclusions/nets, retained authorization decisions and
 holds, corrected accruals, capitalization exclusion, detached state, and derived
-overflow. Submission and reconciliation integration remain in later plan tasks.
+overflow. Configuration/submission tests cover explicit policy coverage,
+configuration ownership, exact principal validation, source retention, duplicates,
+and atomic technical failures. `tests/replay` wires the real core and memory
+adapter for E1/E2/E4 posting checks; full replay and reconciliation remain planned.
 
 For the full local checks, using a current Go toolchain:
 
@@ -61,7 +66,7 @@ make ci
 Place unit tests beside each package in `*_test.go`; ledger unit tests can use a
 test-local repository double. Tests composing multiple real components belong in
 the `tests/replay` external test package, wiring fresh components through the same
-boundaries as main rather than importing the executable. Once those packages exist,
+boundaries as the planned main rather than importing the executable. Currently,
 `go test ./internal/...` runs unit tests and `go test ./tests/replay` runs integration
 tests; `go test ./...` includes both. Use table-driven tests with independent exact
 expectations from [NUMBERS](../NUMBERS.md) and coverage from

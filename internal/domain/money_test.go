@@ -190,6 +190,35 @@ func TestMoneyFormat(t *testing.T) {
 	assert.Empty(t, got)
 }
 
+func TestMoneyValidateCurrency(t *testing.T) {
+	aed, bhd := canonicalCurrencies(t)
+	for _, tc := range []struct {
+		name     string
+		amount   domain.Money
+		expected domain.Currency
+		wantErr  error
+	}{
+		{"matching", money(t, aed, 0), aed, nil},
+		{"equal descriptor", money(t, aed, 1), currency(t, "AED", 2), nil},
+		{"minimum amount", money(t, aed, math.MinInt64), aed, nil},
+		{"maximum amount", money(t, aed, math.MaxInt64), aed, nil},
+		{"different code", money(t, bhd, 0), aed, domain.ErrCurrencyMismatch},
+		{"different scale", money(t, aed, 0), currency(t, "AED", 3), domain.ErrCurrencyMismatch},
+		{"invalid money", domain.Money{}, aed, domain.ErrInvalidCurrency},
+		{"invalid expected descriptor", money(t, aed, 0), domain.Currency{}, domain.ErrInvalidCurrency},
+		{"both invalid", domain.Money{}, domain.Currency{}, domain.ErrInvalidCurrency},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.amount.ValidateCurrency(tc.expected)
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
 func TestCheckedArithmetic(t *testing.T) {
 	aed, bhd := canonicalCurrencies(t)
 	for _, currency := range []domain.Currency{aed, bhd} {

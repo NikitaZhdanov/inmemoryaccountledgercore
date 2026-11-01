@@ -2,8 +2,8 @@
 
 Status: business behavior resolved for the supplied replay and covered validation
 cases. P01 money primitives, P02 pure interest/allocation calculations, P03
-append-only storage, and P04 history projections are implemented; ledger
-processing and replay remain pending later plan tasks.
+append-only storage, P04 history projections, and P05 configuration/ordinary
+submissions are implemented; remaining event workflows and replay are planned.
 
 [TASK.md](TASK.md) preserves the original assignment and canonical input stream.
 This file defines behavior; [AMBIGUITIES.md](../AMBIGUITIES.md) records decision
@@ -80,6 +80,10 @@ The exact validation condition is amount × 10^currency_scale being an integer.
 No tolerance or rounding may make an invalid principal amount pass validation.
 HALF_EVEN is reserved for calculated interest.
 
+CREDIT and DEBIT inputs require nonnegative amounts, including zero. A credit
+posts the parsed amount; a debit posts its checked negation. Negative amounts
+reject without financial effects; see [the sign decision](../AMBIGUITIES.md#a10--ordinary-input-amount-signs).
+
 Reject every duplicate input ID, regardless of payload equality or original
 success, decline, or rejection. Preserve original input/outcome; record the
 rejection and add no monetary, hold, or event-triggered correction effects.
@@ -119,7 +123,7 @@ account/window. Serialized identifiers are implementation details.
 
 ### Currency and policy configuration
 
-When implemented, cmd/replay supplies the concrete currencies, accounts, and
+The planned cmd/replay supplies the concrete currencies, accounts, and
 overdraft policies to the core. Every account currency must have a policy before
 initialization succeeds; missing configuration rejects initialization before
 processing inputs or appending records. There is no implicit currency or fee
@@ -227,8 +231,9 @@ expected result is preselected. Explain what it reveals inline, preserve its
 failure, isolate it from the passing normal suite, document its exact command,
 and record its observed nonzero result. Money and calculation unit tests exist
 under P01–P02, repository unit tests under P03, and direct history-projection
-tests under P04; ledger processing/replay tests and the required failing test
-remain pending. README links
+tests under P04. P05 adds configuration/submission unit tests and real-component
+ordinary-posting integration; full replay and the required failing test remain
+pending. README links
 to [DEVELOPMENT](DEVELOPMENT.md) for runtime/dependency details and test commands;
 add replay instructions when built.
 Preserve intact commit history without squashing.

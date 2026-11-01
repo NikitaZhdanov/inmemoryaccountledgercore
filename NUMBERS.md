@@ -117,8 +117,9 @@ Additional allocation oracles apply at both currency scales:
 
 ## Checkpoint calculations
 
-P04 history fixtures record principal, fee, and correction effects directly;
-processing them from inputs remains later work. All balances below are AED.
+P04 history fixtures record principal, fee, and correction effects directly.
+P05 additionally posts E1/E2/E4 through the core; later event processing remains
+planned. All balances below are AED.
 
 | Observation | Value day | Fee-free balance | Posted balance |
 | --- | ---: | ---: | ---: |
@@ -166,6 +167,32 @@ from 0.000 to 0.004 without changing AED. Final values appear below.
   minor unit is the smallest representable boundary crossing.
 - An observation prefix counts records: zero is empty and full length includes
   all records. Prefixes −1 and length + 1 reject as the nearest invalid bounds.
+
+### Ordinary submission fixtures
+
+- Nonnegative CREDIT/DEBIT amounts include zero; DEBIT negates the parsed
+  amount. Negative AED `-0.01` and the representable minimum reject under
+  [A10](AMBIGUITIES.md#a10--ordinary-input-amount-signs); textual `-0.00` is zero.
+- AED `1.000` stores 100 minor units; BHD `1.0000` stores 1,000. AED `1.005`
+  and BHD `1.0001` reject excess precision. Decimal exponent text `1e2` is
+  outside the fixed-point input grammar.
+- AED `92233720368547758.08` and `-92233720368547758.09` lie one minor unit
+  outside the signed range and reject before sign-policy validation. The
+  positive endpoint posts exactly as a credit or negated debit; a further
+  one-unit debit reaches the negative endpoint exactly.
+- Opening `MaxInt64` plus a one-unit credit and opening `MinInt64` minus a
+  one-unit debit overflow. A one-unit backdated credit also overflows when a
+  later-value credit already posts `MaxInt64`, despite fitting on its own day.
+- Configurable-scale submissions retain exact trailing zeros: scale zero
+  `1.000`, scale four `0.00010`, and scale 18 `0.0000000000000000010` each
+  post one minor unit. `1.1`, `0.00001`, and `0.0000000000000000001`
+  respectively exceed those scales.
+- Initialization uses canonical charges 2,500 AED / zero BHD minor units;
+  −1 rejects a negative policy. Changing an external zero policy to one unit
+  tests configuration ownership. One unit is the smallest representable change.
+- Committed attempt identities count upward from one, independently of source
+  stream positions. An ordinary accepted or rejected attempt contributes three
+  records: input, outcome, then posting or diagnostic.
 
 ## Expected replay results
 

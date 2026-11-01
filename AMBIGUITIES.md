@@ -43,3 +43,11 @@ This record owns alternatives, resolutions, and rationale for business-level tas
 ## A9 — Duplicate IDs and errors
 
 **Task ambiguity — input handling.** Reject every repeated input ID rather than provide an identical-payload retry protocol with conflict rejection. This favors a small, predictable implementation; retry support is outside the assignment. See [validation/errors](docs/SPEC.md#monetary-validation-and-errors).
+
+## A10 — Ordinary input amount signs
+
+**Task ambiguity, explicitly clarified.** CREDIT and DEBIT inputs require
+nonnegative amounts; zero is accepted. DEBIT applies the posting's minus sign.
+Signed input amounts were considered but rejected by explicit clarification,
+keeping the input kind responsible for direction. See
+[monetary validation](docs/SPEC.md#monetary-validation-and-errors).

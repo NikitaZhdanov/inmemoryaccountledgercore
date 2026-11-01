@@ -105,22 +105,24 @@ func (m Money) Format() (string, error) {
 	return sign + digits[:point] + "." + digits[point:], nil
 }
 
-func (m Money) checkCurrency(other Money) error {
+// ValidateCurrency checks that both descriptors are valid and the money uses
+// the expected code and scale. It imposes no restrictions on the signed amount.
+func (m Money) ValidateCurrency(expected Currency) error {
+	if _, err := expected.Scale(); err != nil {
+		return err
+	}
 	if _, err := m.currency.Scale(); err != nil {
 		return err
 	}
-	if _, err := other.currency.Scale(); err != nil {
-		return err
-	}
-	if m.currency != other.currency {
+	if expected != m.currency {
 		return fmt.Errorf("%w: %s(scale %d) and %s(scale %d)", ErrCurrencyMismatch,
-			m.currency.code, m.currency.scale, other.currency.code, other.currency.scale)
+			expected.code, expected.scale, m.currency.code, m.currency.scale)
 	}
 	return nil
 }
 
 func (m Money) Add(other Money) (Money, error) {
-	if err := m.checkCurrency(other); err != nil {
+	if err := other.ValidateCurrency(m.currency); err != nil {
 		return Money{}, err
 	}
 	if (other.minor > 0 && m.minor > math.MaxInt64-other.minor) ||
@@ -131,7 +133,7 @@ func (m Money) Add(other Money) (Money, error) {
 }
 
 func (m Money) Sub(other Money) (Money, error) {
-	if err := m.checkCurrency(other); err != nil {
+	if err := other.ValidateCurrency(m.currency); err != nil {
 		return Money{}, err
 	}
 	// Check subtraction directly: negating MinInt64 would reject valid
