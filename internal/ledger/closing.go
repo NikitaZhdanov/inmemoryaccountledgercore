@@ -114,6 +114,10 @@ func (c *Core) feeBatch(history domain.History, state *projection.Projection, id
 			return domain.Batch{}, err
 		}
 	}
+	return requiredFeeBatch(history, state, id, day, bookingDay, cause, required)
+}
+
+func requiredFeeBatch(history domain.History, state *projection.Projection, id domain.AccountID, day, bookingDay domain.Day, cause domain.RecordKey, required domain.Money) (domain.Batch, error) {
 	net, err := state.FeeNet(id, day)
 	if err != nil {
 		return domain.Batch{}, err

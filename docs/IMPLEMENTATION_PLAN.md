@@ -1,11 +1,11 @@
 # Implementation plan
 
-Status: P01–P09 implemented for their specified workflows; P10–P14 remain planned.
+Status: P01–P10 implemented for their specified workflows; P11–P14 remain planned.
 Money, calculation, repository, projection, configuration, posting, authorization,
 settlement, reversal, instalment, and explicit closing/reconciliation tests exist,
-including automatic historical reconciliation and real-component checkpoint
-integration; Day 6 finalization, full replay, and the required failing design test
-remain pending. The package split
+including automatic historical reconciliation, Day 6 finalization, and
+real-component checkpoint integration; the scenario runner, report, and required
+failing design test remain pending. The package split
 under [A16](../AMBIGUITIES.md#a16--ledger-package-boundaries) changes ownership
 without advancing those remaining tasks.
 
@@ -307,6 +307,15 @@ compose real components before the scenario runner exists.
 
 ### P10 — Consistent Day 6 finalization
 
+- **Status:** Implemented in [finalization](../internal/ledger/finalization.go),
+  with [unit tests](../internal/ledger/finalization_test.go) and
+  [corrected-stream integration](../tests/replay/backdating_test.go).
+  The direct branch determines the final fee before projecting current-day
+  interest and summing rounded accruals. Fee effects, capitalization, and a new
+  close share one validated batch per account/window. Tests cover exact AED/BHD
+  totals, fee boundaries, zero/custom charges, own-fee refunds, same-day interest
+  exclusion, repeat calls, and append/arithmetic failures without partial writes.
+  The standalone runner/report remain P11/P12.
 - **Scope:** In `internal/ledger`, implement the SPEC Day 6 equations after
   historical corrections. Determine fee, rounded accrual, and exact capitalization
   before posting; include capitalization in fee eligibility and exclude it from its own interest

@@ -30,8 +30,11 @@ U02/U04, and X01/X05/X06/X09/X11 through automatic financial submissions with
 explicit closes, before capitalization. Its
 [workflow failure tests](../internal/ledger/backdating_test.go) cover U07's
 committed-input and committed-earlier-day boundaries, including duplicate
-rejection while reconciliation is incomplete. Day 6 and capitalization portions
-remain P10/P11.
+rejection while reconciliation is incomplete. P10
+[finalization tests](../internal/ledger/finalization_test.go) cover H07/H09,
+U07, and X03/X06/X08/X09; the checkpoint integration now verifies final daily
+accruals, exact capitalization, final balances, and retained fee/decision history.
+The reusable scenario runner and report remain P11/P12.
 
 Each scenario is independent unless its preconditions name a replay checkpoint.
 Validation fixtures supplement, rather than modify, E1–E10. Expected rejection,

@@ -5,8 +5,8 @@ cases. P01 money primitives, P02 pure interest/allocation calculations, P03
 append-only storage, P04 history projections, and P05 configuration/ordinary
 submissions, P06 authorization/final settlement, and P07 linked principal reversal
 and instalment posting, P08 explicit closing/fee reconciliation, and P09 automatic
-historical reconciliation after financial submissions are implemented. Day 6
-finalization and full replay remain planned.
+historical reconciliation after financial submissions, and P10 Day 6 finalization
+are implemented. The scenario runner and report remain planned.
 
 [TASK.md](TASK.md) preserves the original assignment and canonical input stream.
 This file defines behavior; [AMBIGUITIES.md](../AMBIGUITIES.md) records decision
@@ -255,8 +255,11 @@ and real-component integration. P08 adds explicit chronological closing, fee
 refunds/renewed adjustments, and accrual-restoration tests with controlled
 principal fixtures, plus real-storage account isolation. P09 adds E7/E8/E9/E10
 checkpoint integration through submissions, preserving decisions while correcting
-fees and accruals, and tests partial progress on technical failures. README links
-to [DEVELOPMENT](DEVELOPMENT.md) for runtime/dependency details and test commands;
+fees and accruals, and tests partial progress on technical failures.
+P10 adds atomic finalization tests for capitalization/fee boundaries, exact
+rounded sums, same-day interest exclusion, idempotence, and technical failures;
+checkpoint integration now verifies final balances after all corrections.
+README links to [DEVELOPMENT](DEVELOPMENT.md) for runtime/dependency details and test commands;
 add replay instructions when built.
 Preserve intact commit history without squashing.
 

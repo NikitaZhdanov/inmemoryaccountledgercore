@@ -265,6 +265,17 @@ its own interest base. The corrected daily accrual sum becomes one credit per
 account/window. Unchanged repeated reconciliation or finalization appends nothing;
 no iterative solver or provisional fee is needed.
 
+[Finalization](../internal/ledger/finalization.go) shares required-net fee batch
+construction with ordinary closing. It sums prior unpaid rounded accruals,
+selects the final fee using the direct branch, and projects a proposed close with
+that fee to derive current-day interest through the existing projection policy.
+It then adds the exact capitalization and validates the full proposed history
+before one append. Fee effects, capitalization, and any new close checkpoint are
+atomic per account. A capitalization record, including a zero credit, identifies
+the account/window ending on the supplied day and makes repeat calls no-ops.
+The caller finishes historical corrections and prior closes before this terminal
+checkpoint; post-capitalization correction/recovery is outside this workflow.
+
 After finalization, main supplies detached history and read-only history
 projections to report. Report reconstructs recorded authorization lifecycle and
 formats rows in supplied day/account order under

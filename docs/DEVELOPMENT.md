@@ -73,7 +73,11 @@ and checks financial restoration, Auth-B's retained decline, late BHD accrual,
 and duplicate/correction idempotence before capitalization. Ledger tests inject
 append failures at the input and successive fee batches and arithmetic failure
 during automatic reconciliation, verifying retained commits and no partial
-failing batch. Day 6 finalization and full replay remain planned.
+failing batch. Finalization tests cover exact rounded capitalization sums,
+capitalization-inclusive fee boundaries, zero/custom charges, same-day interest
+exclusion, repeat calls, and atomic append/overflow failures. The checkpoint
+integration also verifies the corrected six-day accruals and final balances.
+The scenario runner and report remain planned.
 
 For the full local checks, using a current Go toolchain:
 

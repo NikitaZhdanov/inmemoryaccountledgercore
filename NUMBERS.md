@@ -122,7 +122,8 @@ P05 additionally posts E1/E2/E4 through the core; P06 integration submits E1–E
 P07 adds E7/E9 principal posting and E10 instalments. P08 generates the fee/refund
 and closed-day accrual results below through explicit closing/reconciliation with
 controlled principal fixtures; P09 verifies the same oracle through submissions
-with real storage and explicit close checkpoints, before capitalization.
+with real storage and explicit close checkpoints. P10 extends that integration
+through finalization using the six-day oracle below.
 All balances below are AED.
 
 | Observation | Value day | Fee-free balance | Posted balance |
@@ -301,6 +302,44 @@ from 0.000 to 0.004 without changing AED. Final values appear below.
   principal but cannot absorb its first fee. The latter reaches MinInt64 after
   its first 2,500-unit fee; its second fee underflows. The input and any first
   fee remain committed; the overflowing fee appends nothing.
+
+## Day 6 boundaries
+
+Use B excluding the final day's own fee and capitalization, S as prior rounded
+accruals, and the configured charge C. For B < 0, current interest I = 0 and
+F = C if B + S < 0, otherwise zero. For B ≥ 0, F = 0 and I is rounded interest
+on B. Capitalization K = S + I; final close = B + K − F.
+
+| B (AED) | S (AED) | I (AED) | F (AED) | K (AED) | Final close (AED) |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| −0.01 | 0.02 | 0.00 | 0.00 | 0.02 | 0.01 |
+| −0.02 | 0.02 | 0.00 | 0.00 | 0.02 | 0.00 |
+| −0.03 | 0.02 | 0.00 | 25.00 | 0.02 | −25.01 |
+
+These are adjacent minor-unit boundaries; halving them changes representability
+or boundary coverage. Unit fixtures close Day 5 at AED 37.50 to derive S = 0.02,
+then debit 37.51, 37.52, or 37.53 on Day 6 to obtain B. An existing ordinary
+Day 6 fee on B = −0.01 must be refunded during finalization under the same
+obligation, yielding the first row.
+
+Additional finalization fixtures:
+
+- AED 37.49 on Days 5/6 yields 0.01 each, K = 0.02, and close 37.51.
+  The final posted balance would round to 0.02 interest if capitalization leaked
+  into its own base; the correct Day 6 accrual remains 0.01.
+- With S = 0 and B = BHD −0.001, explicit C = 0 leaves the close −0.001 and
+  K = 0.000. Custom XYZ/4 uses the existing one-minor-unit charge fixture:
+  B = −0.0001 gives final close −0.0002 and K = 0.0000. A zero credit records
+  completion without changing money; one capitalization exists per account/window.
+- Opening MaxInt64 cannot absorb its positive daily capitalization; opening
+  MinInt64 cannot absorb the AED fee. A Day 6 base of 2,500 minor units earns
+  one unit, but a Day 7 credit of MaxInt64 − 2,500 makes capitalization overflow
+  that later balance. Each failure leaves the finalization batch uncommitted.
+- Maximum-base rounded daily interest is 3,689,348,814,741,910 minor units.
+  At 2,500 days its sum is 9,223,372,036,854,775,000; at 2,501 it is
+  9,227,061,385,669,516,910, exceeding MaxInt64. Direct close fixtures with
+  2,500 or 2,501 prior days isolate overflow when adding current interest or
+  accumulating prior interest. These counts straddle the exact sum boundary.
 
 ## Expected replay results
 
