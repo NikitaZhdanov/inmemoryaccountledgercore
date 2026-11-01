@@ -274,10 +274,41 @@ func TestSubmissionRepositoryFailures(t *testing.T) {
 	}
 }
 
+func TestValidatePostingPreservesHistoryBackingSlice(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		opening int64
+	}{
+		{"valid posting", 0},
+		{"overflow", math.MaxInt64},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, repository, input := ordinaryFixture(t, tc.opening)
+			input.RawAmount = "0.01"
+			history := repository.History()
+			// Another view owns the record beyond the history prefix. Previewing
+			// must preserve it even when append could reuse the spare capacity.
+			sentinel := domain.Record{Key: "sentinel", Diagnostic: &domain.Diagnostic{Code: "PRESERVE"}}
+			backing := []domain.Record{history.Records[0], sentinel}
+			history.Records = backing[:1]
+			before := []domain.Record{backing[0].Clone(), backing[1].Clone()}
+			posting, err := ordinaryPosting(domain.InputAttempt{ID: "preview", Input: input}, fixtureMoney(t, input.Currency, 1))
+			require.NoError(t, err)
+			err = validatePosting(history, domain.Batch{Records: []domain.Record{posting}}, input)
+			if tc.opening == math.MaxInt64 {
+				require.ErrorIs(t, err, domain.ErrArithmeticOverflow)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, before, backing, "validation must not overwrite records outside the history prefix")
+		})
+	}
+}
+
 func TestUnimplementedWorkflowsAppendNothing(t *testing.T) {
 	core, repository, input := ordinaryFixture(t, 0)
 	before := repository.History()
-	for _, kind := range []domain.InputKind{domain.InputAuthorization, domain.InputSettlement, domain.InputReversal, "unknown"} {
+	for _, kind := range []domain.InputKind{domain.InputReversal, "unknown"} {
 		input.Kind = kind
 		outcome, err := core.Submit(input)
 		require.ErrorIs(t, err, ErrUnsupportedInput)

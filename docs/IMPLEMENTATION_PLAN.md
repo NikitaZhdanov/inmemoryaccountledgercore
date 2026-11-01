@@ -1,9 +1,9 @@
 # Implementation plan
 
-Status: P01–P05 implemented; P06–P14 remain planned. Money, calculation,
-repository, projection, configuration, and ordinary-submission tests exist,
-including real-component posting integration; full replay and the required
-failing design test remain pending.
+Status: P01–P06 implemented for their specified workflows; P07–P14 remain planned.
+Money, calculation, repository, projection, configuration, posting, authorization,
+and settlement tests exist, including real-component E1–E6 integration; full
+replay and the required failing design test remain pending.
 
 [TASK](TASK.md) preserves the assignment; [SPEC](SPEC.md) defines agreed behavior;
 [DESIGN](DESIGN.md) proposes its Go implementation; [USE_CASES](USE_CASES.md)
@@ -158,8 +158,8 @@ compose real components before the scenario runner exists.
   diagnostics atomically; duplicate checks precede dispatch and validation.
   Proposed-history checks catch derived overflow before append, including at
   later value dates. Amount signs follow [A10](../AMBIGUITIES.md#a10--ordinary-input-amount-signs).
-  Authorization, settlement, reversal, instalments, and reconciliation remain
-  scheduled in P06–P09; unsupported workflows currently return a technical error.
+  Authorization and settlement follow in P06; reversal, instalments, and
+  reconciliation remain scheduled in P07–P09.
 - **Scope:** In `internal/ledger`, implement submission handling for credits/debits,
   exact monetary validation, original input retention, unique attempt identities,
   outcomes, and diagnostics. Reject every reused event ID before any
@@ -185,6 +185,16 @@ compose real components before the scenario runner exists.
 
 ### P06 — Authorization decisions and final settlement
 
+- **Status:** Implemented in [authorization handling](../internal/ledger/authorization.go)
+  with adjacent [unit tests](../internal/ledger/authorization_test.go) and
+  [E1–E6 integration](../tests/replay/authorization_test.go). Decisions use posted
+  availability; final settlement atomically debits the settlement amount and
+  releases the linked full hold. Unknown-ID rejection, duplicate outcomes,
+  fee/unpaid-interest boundaries, and technical-failure atomicity are covered.
+  U02 uses direct correction fixtures; full E7/E9 integration remains in P09.
+  Zero amounts pass validation and negative amounts reject under
+  [resolved A15](../AMBIGUITIES.md#a15--authorization-and-settlement-amount-signs).
+  Deferred workflows return a technical error without an attempt.
 - **Scope:** In `internal/ledger`, add event-checkpoint availability,
   approval/decline transitions, active holds, E5 final settlement, full hold
   release, and E6 unknown-ID rejection. Use posted fees in availability and

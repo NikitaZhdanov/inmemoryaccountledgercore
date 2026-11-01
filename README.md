@@ -6,8 +6,9 @@ daily interest, using exact monetary arithmetic.
 Configurable currencies, exact money values, checked arithmetic, daily interest
 rounding, conserving instalment allocation, append-only in-memory storage, and
 history-based balance/state projections, validated core initialization, and
-credit/debit submissions with duplicate rejection are implemented. Remaining
-event workflows and replay reporting are planned.
+credit/debit submissions, authorization decisions, and final settlement with
+duplicate rejection are implemented. Reversals, instalment posting, reconciliation,
+and replay reporting are planned.
 
 ## Requirements
 

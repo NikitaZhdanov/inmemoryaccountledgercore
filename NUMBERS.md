@@ -118,8 +118,8 @@ Additional allocation oracles apply at both currency scales:
 ## Checkpoint calculations
 
 P04 history fixtures record principal, fee, and correction effects directly.
-P05 additionally posts E1/E2/E4 through the core; later event processing remains
-planned. All balances below are AED.
+P05 additionally posts E1/E2/E4 through the core; P06 integration submits E1–E6.
+Later event processing remains planned. All balances below are AED.
 
 | Observation | Value day | Fee-free balance | Posted balance |
 | --- | ---: | ---: | ---: |
@@ -193,6 +193,40 @@ from 0.000 to 0.004 without changing AED. Final values appear below.
 - Committed attempt identities count upward from one, independently of source
   stream positions. An ordinary accepted or rejected attempt contributes three
   records: input, outcome, then posting or diagnostic.
+
+### Authorization and settlement fixtures
+
+- Under [resolved A15](AMBIGUITIES.md#a15--authorization-and-settlement-amount-signs),
+  AED `0.00` and textual `-0.00` pass amount validation for AUTHORIZATION and
+  SETTLEMENT. A zero hold leaves AED 250.00 unchanged; a zero final settlement
+  releases an existing AED 200.00 hold without changing ledger balance.
+  A zero hold request on AED −0.01 still declines for insufficient availability.
+- AED `-0.01` (the smallest negative amount) and the representable minimum
+  `-92233720368547758.08` reject with `DiagnosticNegativeAmount` for both kinds,
+  preserving balances and existing holds. AUTHORIZATION reserves a nonnegative
+  amount; SETTLEMENT posts its checked negation, so input signs cannot create
+  negative holds or settlement credits.
+- E3 reserves AED 200.00 from AED 250.00, leaving AED 50.00 available. A second
+  AED 50.00 hold leaves exactly zero and approves; a further AED 0.01 request
+  declines. AED 0.01 is the smallest representable boundary crossing.
+- A posted AED 25.00 fee reduces AED 250.00 to AED 225.00; its daily interest
+  rounds to AED 0.09. A request of AED 225.01 declines even with that unpaid
+  accrual and a future-value AED 0.01 credit; AED 225.00 approves exactly.
+- E5 releases all AED 200.00 and debits AED 185.00, leaving AED 465.00.
+  A separate active AED 50.00 hold remains reserved in the multiple-hold fixture,
+  giving AED 415.00 available. E6's AED 180.00 request changes neither balance.
+  A fresh AED 0.01 credit after E6 gives AED 465.01, testing continuation.
+- The Auth-B correction fixture uses AED 465.00 − 620.00 − 25.00 − 25.00 =
+  −205.00 before the open Day 5's fee. Its AED 90.00 request would give
+  −295.00; restoring principal and both fees returns AED 465.00 while retaining
+  the decline. Fee generation and Day 5 closing remain later integration work.
+- Proposed availability `MinInt64 − 1` fails before append. Separately,
+  `25,000 + MinInt64 − 24,999 = MinInt64 + 1` at a future value date fits;
+  reserving two minor units at the earlier AED 250.00 checkpoint would underflow
+  future availability and appends nothing.
+- Approval appends three records (attempt, outcome, transition); decline appends
+  four with its diagnostic. Final settlement appends four (attempt, outcome,
+  debit, transition); unknown-ID rejection appends three without financial effects.
 
 ## Expected replay results
 

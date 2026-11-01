@@ -51,3 +51,17 @@ nonnegative amounts; zero is accepted. DEBIT applies the posting's minus sign.
 Signed input amounts were considered but rejected by explicit clarification,
 keeping the input kind responsible for direction. See
 [monetary validation](docs/SPEC.md#monetary-validation-and-errors).
+
+## A15 — Authorization and settlement amount signs
+
+**Resolved task ambiguity, explicitly clarified.** AUTHORIZATION and SETTLEMENT
+follow [A10](#a10--ordinary-input-amount-signs): accept only nonnegative parsed
+amounts, including zero, and reject negative amounts with
+`DiagnosticNegativeAmount` without financial or hold effects. Strictly positive
+validation and signed operational amounts were rejected by explicit clarification.
+`InputKind` alone determines direction: AUTHORIZATION reserves the amount;
+SETTLEMENT posts its checked negation and releases the original hold. Negative
+holds and settlement credits cannot result from negative input. Zero remains
+subject to availability and authorization-reference rules. See
+[monetary validation](docs/SPEC.md#monetary-validation-and-errors) and
+[verification values](NUMBERS.md#authorization-and-settlement-fixtures).

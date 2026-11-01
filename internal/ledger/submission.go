@@ -22,15 +22,17 @@ const (
 	DiagnosticAmountPrecision  = "AMOUNT_PRECISION"
 	DiagnosticAmountRange      = "AMOUNT_OUT_OF_RANGE"
 	DiagnosticNegativeAmount   = "NEGATIVE_AMOUNT"
+	negativeAmountReason       = "amount must be nonnegative"
 )
 
-// Submit records a credit/debit attempt, its outcome, and any posting or
+// Submit records an input attempt, its outcome, and any posting, transition, or
 // diagnostic in one atomic batch. Covered business rejections return a rejected
 // outcome and nil error; diagnostics are linked by Outcome.DiagnosticKey.
 // Technical failures return a zero outcome and append nothing from this batch.
 // Supplied days/order and raw text are retained; explicit closing and historical
-// fee reconciliation are separate workflows. Authorization, settlement, reversal,
-// and instalment processing remain unsupported until their planned tasks.
+// fee reconciliation are separate workflows. Reversal and instalment processing
+// remain unsupported until their planned tasks. Deferred authorization workflows
+// also return ErrUnsupportedInput without recording an attempt.
 func (c *Core) Submit(input domain.InputEvent) (domain.InputOutcome, error) {
 	history := c.repository.History()
 	attempt, duplicate := prepareAttempt(history, input)
@@ -40,27 +42,44 @@ func (c *Core) Submit(input domain.InputEvent) (domain.InputOutcome, error) {
 	if input.ID == "" {
 		return c.reject(attempt, DiagnosticInvalidEventID, "event ID is empty")
 	}
-	if input.Kind != domain.InputCredit && input.Kind != domain.InputDebit || input.InstalmentCount != 0 {
+	if input.InstalmentCount != 0 {
 		return domain.InputOutcome{}, fmt.Errorf("%w: %s (instalments %d)", ErrUnsupportedInput, input.Kind, input.InstalmentCount)
 	}
-	amount, code, err := c.parseOrdinaryAmount(input)
+	switch input.Kind {
+	case domain.InputCredit, domain.InputDebit, domain.InputAuthorization, domain.InputSettlement:
+	default:
+		return domain.InputOutcome{}, fmt.Errorf("%w: %s", ErrUnsupportedInput, input.Kind)
+	}
+	amount, code, err := c.parseInputAmount(input)
 	if err != nil {
 		return c.reject(attempt, code, err.Error())
 	}
-	posting, err := ordinaryPosting(attempt, amount)
+	batch, outcome, err := submissionBatch(history, attempt, amount)
 	if err != nil {
 		return domain.InputOutcome{}, err
 	}
-	outcome := domain.InputOutcome{AttemptID: attempt.ID, Status: domain.OutcomeAccepted}
-	batch := attemptBatch(attempt, outcome)
-	batch.Records = append(batch.Records, posting)
 	if err := validatePosting(history, batch, input); err != nil {
 		return domain.InputOutcome{}, err
 	}
-	if err := c.repository.Append(batch); err != nil {
-		return domain.InputOutcome{}, err
+	return c.commitBatch(batch, outcome)
+}
+
+func submissionBatch(history domain.History, attempt domain.InputAttempt, amount domain.Money) (domain.Batch, domain.InputOutcome, error) {
+	switch attempt.Input.Kind {
+	case domain.InputAuthorization:
+		return authorizationBatch(history, attempt, amount)
+	case domain.InputSettlement:
+		return settlementBatch(history, attempt, amount)
+	default:
+		posting, err := ordinaryPosting(attempt, amount)
+		if err != nil {
+			return domain.Batch{}, domain.InputOutcome{}, err
+		}
+		outcome := domain.InputOutcome{AttemptID: attempt.ID, Status: domain.OutcomeAccepted}
+		batch := attemptBatch(attempt, outcome)
+		batch.Records = append(batch.Records, posting)
+		return batch, outcome, nil
 	}
-	return outcome, nil
 }
 
 // prepareAttempt counts committed attempts and detects reuse without changing
@@ -100,7 +119,7 @@ func ordinaryPosting(attempt domain.InputAttempt, amount domain.Money) (domain.R
 	}, nil
 }
 
-func (c *Core) parseOrdinaryAmount(input domain.InputEvent) (domain.Money, string, error) {
+func (c *Core) parseInputAmount(input domain.InputEvent) (domain.Money, string, error) {
 	account, exists := c.accounts[input.AccountID]
 	if !exists {
 		return domain.Money{}, DiagnosticUnknownAccount, fmt.Errorf("%w: %q", ErrUnknownAccount, input.AccountID)
@@ -123,7 +142,7 @@ func (c *Core) parseOrdinaryAmount(input domain.InputEvent) (domain.Money, strin
 		return domain.Money{}, code, err
 	}
 	if amount.MinorUnits() < 0 {
-		return domain.Money{}, DiagnosticNegativeAmount, errors.New("credit/debit amount must be nonnegative")
+		return domain.Money{}, DiagnosticNegativeAmount, errors.New(negativeAmountReason)
 	}
 	return amount, "", nil
 }
@@ -136,6 +155,21 @@ func attemptBatch(attempt domain.InputAttempt, outcome domain.InputOutcome) doma
 }
 
 func (c *Core) reject(attempt domain.InputAttempt, code, reason string) (domain.InputOutcome, error) {
+	batch, outcome := buildRejectionBatch(attempt, code, reason)
+	return c.commitBatch(batch, outcome)
+}
+
+// commitBatch is the single append path for prepared submissions and early
+// rejections. An outcome is returned only after the complete batch commits.
+func (c *Core) commitBatch(batch domain.Batch, outcome domain.InputOutcome) (domain.InputOutcome, error) {
+	if err := c.repository.Append(batch); err != nil {
+		return domain.InputOutcome{}, err
+	}
+	return outcome, nil
+}
+
+// buildRejectionBatch only constructs records; Submit/reject commit them once.
+func buildRejectionBatch(attempt domain.InputAttempt, code, reason string) (domain.Batch, domain.InputOutcome) {
 	key := domain.RecordKey(string(attempt.ID) + "/diagnostic")
 	outcome := domain.InputOutcome{AttemptID: attempt.ID, Status: domain.OutcomeRejected, DiagnosticKey: key}
 	batch := attemptBatch(attempt, outcome)
@@ -143,17 +177,16 @@ func (c *Core) reject(attempt domain.InputAttempt, code, reason string) (domain.
 		Code: code, Reason: reason, AccountID: attempt.Input.AccountID,
 		ObservationDay: attempt.Input.BookingDay, AttemptID: attempt.ID,
 	}})
-	if err := c.repository.Append(batch); err != nil {
-		return domain.InputOutcome{}, err
-	}
-	return outcome, nil
+	return batch, outcome
 }
 
 // Validate the proposed history before append, including every affected value
 // checkpoint. A backdated posting may fit at its own day but overflow at a later
 // posting. Rebuild also checks derived closed-day accruals and recorded holds.
 func validatePosting(history domain.History, batch domain.Batch, input domain.InputEvent) error {
-	history.Records = append(history.Records, batch.Records...)
+	records := make([]domain.Record, len(history.Records), len(history.Records)+len(batch.Records))
+	copy(records, history.Records)
+	history.Records = append(records, batch.Records...)
 	projection, err := Rebuild(history, len(history.Records))
 	if err != nil {
 		return err

@@ -36,8 +36,8 @@ go test ./...
 go vet ./...
 ```
 
-The focused commands run money, ledger, and repository unit tests plus ordinary
-posting integration; `go test ./...` runs all implemented tests.
+The focused commands run money, ledger, and repository unit tests plus posting
+integration; `go test ./...` runs all implemented tests.
 Success prints `ok`; vet is silent on success. A failing
 assertion or check returns a nonzero exit status. The money tests use literal
 expected values for configurable precision, trailing zeros, signed endpoints,
@@ -52,8 +52,11 @@ value-date balances, fee exclusions/nets, retained authorization decisions and
 holds, corrected accruals, capitalization exclusion, detached state, and derived
 overflow. Configuration/submission tests cover explicit policy coverage,
 configuration ownership, exact principal validation, source retention, duplicates,
-and atomic technical failures. `tests/replay` wires the real core and memory
-adapter for E1/E2/E4 posting checks; full replay and reconciliation remain planned.
+and atomic technical failures. Authorization tests cover exact-zero/negative
+proposed availability, recorded declines, posted fees, unpaid-interest exclusion,
+final settlement/full hold release, duplicate outcomes, and atomic failures.
+`tests/replay` wires the real core and memory adapter for E1–E6, including unknown
+settlement rejection and continuation; full replay and reconciliation remain planned.
 
 For the full local checks, using a current Go toolchain:
 
