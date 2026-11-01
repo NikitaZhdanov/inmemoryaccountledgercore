@@ -1,11 +1,11 @@
 # Implementation plan
 
-Status: P01–P10 implemented for their specified workflows; P11–P14 remain planned.
+Status: P01–P11 implemented for their specified workflows; P12–P14 remain planned.
 Money, calculation, repository, projection, configuration, posting, authorization,
 settlement, reversal, instalment, and explicit closing/reconciliation tests exist,
 including automatic historical reconciliation, Day 6 finalization, and
-real-component checkpoint integration; the scenario runner, report, and required
-failing design test remain pending. The package split
+real-component checkpoint integration, and the canonical scenario runner;
+the report and required failing design test remain pending. The package split
 under [A16](../AMBIGUITIES.md#a16--ledger-package-boundaries) changes ownership
 without advancing those remaining tasks.
 
@@ -19,7 +19,7 @@ business decisions, numerical oracles, or [criterion verdicts](../REJECTED.md).
 Execute the tasks below in order within the agreed implementation scope. Each task
 is intended as a focused commit containing its implementation, meaningful tests,
 and relevant record updates. Dependencies identify required capabilities; use
-direct fixtures to review lower layers before the complete runner exists.
+direct fixtures to review lower layers independently of the complete runner.
 Partial use-case coverage is called out where later integration is necessary.
 Preserve intact commit history without squashing.
 
@@ -51,7 +51,7 @@ Follow DESIGN's [package/import map](DESIGN.md#packages-and-dependencies) and
 
 Follow [DEVELOPMENT test organization](DEVELOPMENT.md#test-organization) for test
 placement, component wiring, and package-specific commands. Integration tests can
-compose real components before the scenario runner exists.
+compose real components independently of the scenario runner.
 
 ## Ordered tasks
 
@@ -315,7 +315,7 @@ compose real components before the scenario runner exists.
   close share one validated batch per account/window. Tests cover exact AED/BHD
   totals, fee boundaries, zero/custom charges, own-fee refunds, same-day interest
   exclusion, repeat calls, and append/arithmetic failures without partial writes.
-  The standalone runner/report remain P11/P12.
+  P11 adds the reusable runner; executable reporting remains P12.
 - **Scope:** In `internal/ledger`, implement the SPEC Day 6 equations after
   historical corrections. Determine fee, rounded accrual, and exact capitalization
   before posting; include capitalization in fee eligibility and exclude it from its own interest
@@ -333,6 +333,14 @@ compose real components before the scenario runner exists.
 
 ### P11 — Canonical scenario runner and end-to-end regression
 
+- **Status:** Implemented in [scenario](../internal/scenario/scenario.go), with
+  adjacent [unit tests](../internal/scenario/scenario_test.go) and real-component
+  [canonical replay tests](../tests/replay/scenario_test.go). Tests independently
+  compare every source field, explicit close positions, checkpoint and final
+  numerical oracles, original decisions, linked fee/refund history, deterministic
+  fresh runs, duplicate resubmission, and stopping on technical failures.
+  Accounts/descriptors and the initialized core are injected; scenario constructs
+  no repository, policy, or report. Executable reporting remains P12.
 - **Scope:** Add `internal/scenario` with literal domain inputs and explicit
   close checkpoints; its runner receives an already constructed ledger core.
   Put scenario unit tests beside the package and complete replay tests in

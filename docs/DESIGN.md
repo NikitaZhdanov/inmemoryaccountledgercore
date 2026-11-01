@@ -10,7 +10,7 @@ belong to [DEVELOPMENT](DEVELOPMENT.md).
 ## Packages and dependencies
 
 Production code uses the Go standard library. The table lists allowed imports
-within this module. Report, scenario, and executable composition remain planned.
+within this module. Report and executable composition remain planned.
 The split follows [A16](../AMBIGUITIES.md#a16--ledger-package-boundaries).
 
 | Package | Responsibility | Allowed internal imports |
@@ -22,7 +22,7 @@ The split follows [A16](../AMBIGUITIES.md#a16--ledger-package-boundaries).
 | `internal/ledger` | Validated configuration, submission commits, chronological closing/reconciliation, and the consumer-owned repository interface. | `domain`, `posting`, `projection` |
 | `internal/repository/memory` | Append-only storage, detached history, record-key validation, atomic batches. | `domain` |
 | `internal/report` (planned) | Pure report projection and formatting from detached history and read-only projections. | `domain`, `projection` |
-| `internal/scenario` (planned) | Canonical inputs and explicit close sequencing against an injected core. | `domain`, `ledger` |
+| `internal/scenario` | Canonical inputs and explicit close sequencing against an injected core. | `domain`, `ledger` |
 | `cmd/replay` (planned) | Construct storage/configuration/core, run scenario, and supply finalized history/projections to report. | `domain`, `ledger`, `projection`, `repository/memory`, `report`, `scenario` |
 
 Imports point toward `domain`; the graph is acyclic. Ledger owns all workflow
@@ -242,8 +242,12 @@ API parameters, supported days, and validation are documented in code.
 The replay owns its close schedule and capitalization checkpoint. Ordinary
 closing accepts a supplied positive day without a fixed replay-window cutoff;
 the caller chooses ordinary closing or capitalization-aware finalization.
-The canonical schedule belongs to [SPEC](SPEC.md#history-and-replay) and will be
-supplied by scenario composition, not encoded as a day limit in the core.
+The canonical schedule belongs to [SPEC](SPEC.md#history-and-replay) and is
+supplied by [scenario](../internal/scenario/scenario.go), with configured account
+values and an initialized core passed by composition. Scenario submits inputs in
+source order, closes both accounts at explicit event checkpoints, and finalizes
+after the last submission and its corrections. It propagates technical failures
+with operation context; business outcomes remain in history.
 
 Financial changes affecting closed history require chronological reconciliation
 of affected account/days before the next input. Ledger projects the value-dated

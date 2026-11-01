@@ -1,7 +1,8 @@
 # Ledger use cases
 
-Status: verification scenarios; full replay tests remain planned. Business
-expectations come from [SPEC](SPEC.md); technical checks follow the
+Status: verification scenarios; full scenario replay tests exist, with report
+verification still planned. Business expectations come from [SPEC](SPEC.md);
+technical checks follow the
 [DESIGN](DESIGN.md). This catalog maps specified behavior to verification scenarios.
 [TASK](TASK.md) remains the canonical input. Scenario IDs are labels, not new
 constants; amounts and boundary fixtures use [NUMBERS](../NUMBERS.md).
@@ -34,7 +35,13 @@ rejection while reconciliation is incomplete. P10
 [finalization tests](../internal/ledger/finalization_test.go) cover H07/H09,
 U07, and X03/X06/X08/X09; the checkpoint integration now verifies final daily
 accruals, exact capitalization, final balances, and retained fee/decision history.
-The reusable scenario runner and report remain P11/P12.
+P11 [scenario unit tests](../internal/scenario/scenario_test.go) independently
+verify TASK source fields, injected configuration, and technical-failure stops.
+The [canonical replay regression](../tests/replay/scenario_test.go) runs the reusable
+runner against real core/memory components for H01–H07, U01/U02/U04, and
+X01/X06/X09/X11, including explicit close positions, deterministic fresh history,
+and duplicate resubmission without financial/hold effects. Report assertions
+remain P12.
 
 Each scenario is independent unless its preconditions name a replay checkpoint.
 Validation fixtures supplement, rather than modify, E1–E10. Expected rejection,
