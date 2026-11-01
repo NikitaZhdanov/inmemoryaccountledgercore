@@ -17,6 +17,13 @@ accept 5 conditionally. TASK.md remains unchanged.
 
 ## Abandoned approaches
 
+- Rejected P13's initial expectation that a duplicate/retried `Submit` would
+  complete missing financial work. This directly violated
+  [A9](AMBIGUITIES.md#a9--duplicate-ids-and-errors), which requires duplicate
+  rejection with zero financial side effects. Replaced that test with a single
+  submission's post-failure atomicity assertion against the
+  [repository boundary](docs/DESIGN.md#repository-boundary). Production behavior
+  is unchanged.
 - Replaced the broad ledger business-logic package with focused posting,
   projection, and interest packages; ledger retains configuration and commit
   workflows. See the [package-boundary decision](AMBIGUITIES.md#a16--ledger-package-boundaries).
@@ -33,7 +40,6 @@ accept 5 conditionally. TASK.md remains unchanged.
 Earlier specification and design alternatives are recorded in
 [A2](AMBIGUITIES.md#a2--storage-boundary),
 [A3](AMBIGUITIES.md#a3--unmatched-settlement),
-[A10](AMBIGUITIES.md#a10--duplicate-ids-and-errors), and
-[A11](AMBIGUITIES.md#a11--required-failing-test).
+[A10](AMBIGUITIES.md#a10--duplicate-ids-and-errors).
 The superseded runtime undefined-BHD-policy proposal is recorded in
 [A5](AMBIGUITIES.md#a5--fee-bases-and-missing-bhd-tariff).

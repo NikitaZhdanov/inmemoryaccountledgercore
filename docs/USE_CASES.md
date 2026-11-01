@@ -412,9 +412,9 @@ remain outside scope. The design remains sequential and in memory.
 ## Design-test candidates
 
 The [assignment](TASK.md#deliverable-1--repository) requires a real failing test
-against the chosen design. [SPEC](SPEC.md#verification-and-deferred-work) and
-[A11](../AMBIGUITIES.md#a11--required-failing-test) defer its selection until
-implementation provides evidence. The scenarios above should pass their eventual
+against the chosen design. [SPEC](SPEC.md#verification-and-deferred-work) defines
+its contract; [DESIGN](DESIGN.md#repository-boundary) owns the atomicity boundary
+and trade-off. The scenarios above must pass their
 regression assertions, including U07's expected technical failure. A regression
 bug should be fixed rather than preserved merely to fill this deliverable.
 
@@ -422,11 +422,25 @@ Credible investigation candidates arising from the current technical choices are
 
 | Candidate | Evidence to seek before selecting a failing assertion | Boundary on the claim |
 | --- | --- | --- |
-| Interruption during multi-batch historical reconciliation | Exercise a real technical failure between committed batches; inspect whether retained history and rebuilt projections expose incomplete financial correction and whether it can be completed using the existing interface. | Per-batch atomicity does not establish whole-operation recovery. Explain the observed limitation and the useful property being probed; rollback/resume remains outside the current contract. |
+| Interruption during multi-batch historical reconciliation | Exercise a real technical failure between committed batches; inspect whether retained history and rebuilt projections expose incomplete financial correction and whether it can be completed using the existing interface. | Per-batch atomicity does not establish whole-operation rollback or automatic recovery. The explicit recovery rule belongs to DESIGN's repository boundary. |
 | Fixed-width accumulation sensitivity | Use independently derived, individually representable postings whose mathematical aggregate fits but an intermediate sum does not; inspect whether the implemented history scan cannot produce that representable projection. | DESIGN explicitly requires intermediates to fit. An expected overflow is a passing U07 check, not automatically a failing design test. A separate probe would expose a documented representation limitation, not a violated business requirement or a new promise of unbounded money. |
 
-Selection remains open. A candidate must expose a meaningful limitation of the
-implementation, with a documented trade-off and justification for the property
-being probed. Annotate the selected test inline and preserve its nonzero result
-under `go test -tags designlimitation ./...`. No tagged failing test exists yet;
-the deliverable remains pending.
+P13 selected the interruption candidate in the tagged
+[integration probe](../tests/replay/designlimitation_test.go). Its useful property
+is financial atomicity of a single failed submission: callers could handle a
+technical error without observing partially reconciled financial effects. The
+test interrupts the second fee append and compares the immediate balance with
+the unchanged pre-submission zero oracle in
+[NUMBERS](../NUMBERS.md#interrupted-reconciliation-probe). Its annotated assertion
+fails because prior batches survive. The normal interruption regressions verify
+explicit recovery separately. No duplicate input is submitted. This documents
+the atomicity boundary without changing U07, U04, or X06.
+The fixed-width lead was not selected: its existing `MaxInt64 + 1 − 1`
+projection fixture expects intermediate overflow under U07, which alone supplies
+no additional failing property. The earlier aggregate-rounding proposal was
+withdrawn at explicit request before implementation (WORKLOG,
+2026-10-31T17:24:29Z): an artificial assertion contradicting agreed output did
+not establish a genuine design limitation. Superseded implementations and their
+replacement reasons belong to [REJECTED](../REJECTED.md#abandoned-approaches). See
+[DEVELOPMENT](DEVELOPMENT.md#replay-and-isolated-failing-test) for isolated commands
+and the required nonzero assertion result.

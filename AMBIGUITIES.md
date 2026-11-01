@@ -57,6 +57,11 @@ Signed input amounts were considered but rejected by explicit clarification,
 keeping the input kind responsible for direction. See
 [monetary validation](docs/SPEC.md#monetary-validation-and-errors).
 
+## A11 — Submission-Level Atomicity Limitation
+
+The established atomicity boundary and recovery rule are owned by
+[DESIGN](docs/DESIGN.md#repository-boundary).
+
 ## A15 — Authorization and settlement amount signs
 
 **Resolved task ambiguity, explicitly clarified.** AUTHORIZATION and SETTLEMENT

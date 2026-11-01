@@ -6,8 +6,10 @@ daily interest, using exact monetary arithmetic.
 The canonical replay and deterministic daily report are implemented, including
 authorization decisions, settlement, backdated corrections, linked fee refunds,
 instalments, and interest capitalization. Normal tests cover the full replay.
-The required isolated failing design test and final deliverable audit remain
-planned in the [implementation plan](docs/IMPLEMENTATION_PLAN.md).
+An isolated failing design test documents the submission's atomicity boundary; see
+[its command and interpretation](docs/DEVELOPMENT.md#replay-and-isolated-failing-test).
+The final deliverable audit remains planned in the
+[implementation plan](docs/IMPLEMENTATION_PLAN.md).
 
 The core coordinates focused `posting`, `projection`, and `interest` packages;
 see the [package map](docs/DESIGN.md#packages-and-dependencies).

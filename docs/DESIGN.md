@@ -164,10 +164,18 @@ obligation/correction cause for adjustments, and account/window for
 capitalization. Required-net comparison supplies reconciliation idempotence;
 key uniqueness is a final structural guard.
 
-Atomicity applies to each appended batch. A submission and its historical
-reconciliation may span multiple batches; a later technical failure does not
-roll back earlier commits. Whole-operation rollback and recovery are outside
-the contract.
+`Append` commits each batch independently. A multi-batch `Submit` failure leaves
+earlier committed batches in history without automatic rollback. Whole-submission
+atomicity is intentionally not provided to keep the repository interface and
+batch execution model simple.
+
+If a transient write failure interrupts reconciliation after the input commits,
+callers must complete the outstanding corrections through explicit, idempotent
+`ReconcileClosedDays` with the original committed attempt as cause before
+continuing replay. Intermediate balances remain visible until recovery completes.
+Duplicate `Submit` retries leave financial state unchanged under
+[A9](../AMBIGUITIES.md#a9--duplicate-ids-and-errors): they append rejection
+records without postings, hold changes, or reconciliation.
 
 ## Processing and reconciliation
 
@@ -305,6 +313,6 @@ duplicate-input and deferred business behavior are defined in
 Verification coverage and limitation investigations belong to
 [USE_CASES](USE_CASES.md), with independent expectations in
 [NUMBERS](../NUMBERS.md). The required failing-test contract is in
-[SPEC](SPEC.md#verification-and-deferred-work), its selection decision in
-[A11](../AMBIGUITIES.md#a11--required-failing-test), and commands in
+[SPEC](SPEC.md#verification-and-deferred-work); isolated probe commands and failure
+interpretation belong to
 [DEVELOPMENT](DEVELOPMENT.md#replay-and-isolated-failing-test).

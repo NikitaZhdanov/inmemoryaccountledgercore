@@ -346,6 +346,33 @@ accounts are tabulated in [expected replay results](#expected-replay-results).
   its first 2,500-unit fee; its second fee underflows. The input and any first
   fee remain committed; the overflowing fee appends nothing.
 
+### Interrupted reconciliation probe
+
+The [P13 test](tests/replay/designlimitation_test.go) uses one AED account at zero,
+closes Days 2 and 3, then submits a Day 5 debit of AED 0.01 value-dated Day 2.
+Two closed days are the minimum needed to interrupt between fee batches; these
+dates reuse the existing submission-interruption fixture. One minor unit is the
+smallest overdraft and cannot be halved at AED precision. Each fee is the
+task-supplied AED 25.00, not a test-selected tariff.
+
+| Observation | Day 2 close (AED) | Day 3 close (AED) | Fee records |
+| --- | ---: | ---: | ---: |
+| Before debit | 0.00 | 0.00 | 0 |
+| Day 3 fee append interrupted | −25.01 | −25.01 | 1 |
+| Expected after failure under whole-submission financial atomicity | 0.00 | 0.00 | 0 |
+| Explicit reconciliation completed | −25.01 | −50.01 | 2 |
+
+The tagged assertion's independent oracle is zero: financial atomicity on failure
+would preserve the opening zero with no committed debit or fee. The observed
+Day 3 balance immediately after the error is −1 − 2,500 = −2,501 minor units,
+leaving a 2,500-unit fee outstanding. The completed-work oracle is
+−1 − 2,500 − 2,500 = −5,001 minor units; the normal
+[interruption regressions](internal/ledger/backdating_test.go) verify that explicit
+reconciliation reaches it idempotently. A wrapper interrupts only the Day 3 fee
+assessment before storage. The tagged test submits once and queries before any
+recovery. All balances are nonpositive, so interest is zero. The atomicity
+boundary and trade-off belong to [DESIGN](docs/DESIGN.md#repository-boundary).
+
 ## Day 6 boundaries
 
 Use B excluding the final day's own fee and capitalization, S as prior rounded
