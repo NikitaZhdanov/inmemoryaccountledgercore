@@ -8,7 +8,7 @@ constants; amounts and boundary fixtures use [NUMBERS](../NUMBERS.md).
 
 Each scenario is independent unless its preconditions name a replay checkpoint.
 Validation fixtures supplement, rather than modify, E1–E10. Expected rejection,
-decline, policy diagnostic, or technical failure is a **passing regression test**
+decline, initialization error, or technical failure is a **passing regression test**
 when observed as specified. None by itself satisfies the assignment's required
 genuinely failing design test; see [design-test candidates](#design-test-candidates).
 
@@ -100,6 +100,18 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
 - **Preserved invariants:** Currency formatting and recorded decisions remain
   distinct from restated finances; [reporting and observations](SPEC.md#reporting-and-observations).
 
+### H09 — Negative BHD balance with explicit no-fee policy
+
+- **Preconditions:** A valid initialized core with BHD's policy explicitly set
+  to zero and a negative BHD closing base. For the Day 6 fixture, prior accrual is zero.
+- **Action:** Close/reconcile the day, repeat unchanged processing, and separately
+  finalize the Day 6 fixture.
+- **Expected outcome:** No fee entry, conversion, or undefined-policy diagnostic;
+  the negative balance is retained and its interest is zero. Repetition adds no effects.
+- **Preserved invariants:** Explicit zero is a configured policy; the BHD no-fee
+  assumption is separate from TASK's AED tariff. See
+  [currency and policy configuration](SPEC.md#currency-and-policy-configuration).
+
 ## Unhappy flows
 
 ### U01 — Unknown authorization settlement
@@ -145,17 +157,18 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
 - **Preserved invariants:** Input rejection is distinct from internal correction
   idempotence; [monetary validation and errors](SPEC.md#monetary-validation-and-errors).
 
-### U05 — Negative BHD balance without a tariff
+### U05 — Reject missing or incompatible initialization policy
 
-- **Preconditions:** Separate BHD fixture with a negative fee-eligibility balance;
-  no tariff/conversion supplied. On Day 6 evaluate eligibility after capitalization.
-- **Action:** Close/reconcile, repeat unchanged processing, then continue with
-  another covered operation.
-- **Expected outcome:** Undefined-policy diagnostic, no fee/conversion, preserved
-  balance, and continued processing. Repeating the same account/day/cause produces
-  no additional diagnostic occurrence. This is not exercised by canonical E10.
-- **Preserved invariants:** Missing policy is explicit rather than a zero tariff;
-  [missing BHD fee policy](SPEC.md#missing-bhd-fee-policy).
+- **Preconditions:** Account configuration with a missing overdraft-policy entry;
+  independent fixtures have invalid descriptors, a code assigned conflicting
+  scales, a negative charge, or money incompatible with its policy currency.
+- **Action:** Initialize the core, then try a separate valid initialization with
+  an explicit currency-specific zero charge.
+- **Expected outcome:** Invalid configurations reject before processing/append;
+  history stays unchanged. The valid no-fee configuration initializes successfully.
+  An absent policy is never treated as a zero-charge policy or a replay diagnostic.
+- **Preserved invariants:** Complete configuration before replay;
+  [currency and policy configuration](SPEC.md#currency-and-policy-configuration).
 
 ### U06 — Reject unrepresentable input
 
@@ -285,7 +298,7 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
 ### X10 — Exact maximum-base interest and currency isolation
 
 - **Preconditions:** Maximum positive representable minor-unit base, and money
-  operands carrying different currencies, in isolated arithmetic checks.
+  operands carrying different codes or different scales, in isolated arithmetic checks.
 - **Action:** Calculate the base's daily interest; separately attempt cross-currency arithmetic.
 - **Expected outcome:** Interest is exact and safely rounded without an overflowing
   rate intermediate. Cross-currency arithmetic is invalid; no conversion is inferred.
@@ -306,6 +319,20 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
   defensive copies, key uniqueness, and batch atomicity per
   [DESIGN](DESIGN.md#repository-boundary). This is separate from duplicate input rejection.
 
+### X12 — Configurable currency precision and identity
+
+- **Preconditions:** Independently constructed code/scale descriptors, including
+  scales zero, four, and 18, plus invalid code/scale fixtures in
+  [NUMBERS](../NUMBERS.md#configurable-currency-verification).
+- **Action:** Validate descriptors; parse/format exact amounts at each scale;
+  add/subtract/sum values with matching or conflicting descriptors.
+- **Expected outcome:** Invalid descriptors reject. Fixed-point formatting and
+  int64 endpoints remain exact at configurable scales. Equal code/scale values
+  interoperate across instances; different codes or scales reject arithmetic.
+- **Preserved invariants:** No built-in currency enumeration or implicit conversion;
+  [monetary validation](SPEC.md#monetary-validation-and-errors). Account/policy
+  descriptor consistency during initialization follows in P05.
+
 ## Coverage review and scope boundary
 
 The review includes the following often missed cases within the agreed scope:
@@ -314,8 +341,9 @@ The review includes the following often missed cases within the agreed scope:
 | --- | --- |
 | Source fields, E10 after E9, explicit closes and historical corrections | H01, H04–H08, X01, X11 |
 | Holds, final settlement, unknown ID, Auth-B's retained decline | H02–H03, U01–U02, X02 |
-| Fee chronology, own-fee exclusion, repeated/renewed eligibility, missing BHD tariff | H04–H05, U05, X05–X08 |
-| Currency precision, residual, ties, integer bounds and arithmetic failures | H06, U03, U06–U07, X03–X04, X10 |
+| Fee chronology, own-fee exclusion, repeated/renewed eligibility, explicit BHD no-fee assumption | H04–H05, H09, X05–X08 |
+| Complete initialization policy and descriptor compatibility | U05, X12 |
+| Currency precision, residual, ties, integer bounds and arithmetic failures | H06, U03, U06–U07, X03–X04, X10, X12 |
 | Rebuilt unpaid interest, late BHD accrual, capitalization and zero boundary | H05–H07, X03, X06, X08–X09 |
 | Diagnostics/continuation, duplicates versus corrections, immutable history | U01–U07, X06, X11 |
 | Final row placement, linked fee history, currency formatting, determinism | H08, X01, X04, X06 |
@@ -334,8 +362,8 @@ Differing authorization booking/value dates, explicit partial/over-captures,
 expiry/cancellation, inactive-ID settlements, and additional unexercised input
 validation categories stay outside this catalog's asserted behavior; see
 [deferred scope](SPEC.md#verification-and-deferred-work) and
-[A10](../AMBIGUITIES.md#a10--duplicate-ids-and-errors). BHD tariffs, exchange
-rates, retry/recovery protocols, performance targets, and concurrent writers
+[A10](../AMBIGUITIES.md#a10--duplicate-ids-and-errors). Alternate BHD tariffs,
+exchange rates, retry/recovery protocols, performance targets, and concurrent writers
 remain outside scope. The design remains sequential and in memory.
 
 ## Design-test candidates

@@ -48,6 +48,7 @@ Do not present one plausible interpretation as if the task explicitly specified 
 ## Implementation and verification constraints
 
 - Use exact monetary arithmetic, such as integer minor units or an exact decimal type. Never use binary floating point for money or rate calculations. Store and round AED to 2 places and BHD to 3 places.
+- Keep currencies configurable as validated code/scale values, with no AED/BHD constants or currency-code switches in the core. Supply concrete descriptors and fee policies in cmd/replay when implemented. Initialization must reject missing policies for any account currency; explicit zero means no fee. The canonical BHD no-fee policy is an assumption replacing the earlier runtime undefined-policy proposal.
 - Keep ledger records append-only. Reversals and corrections append new records; original events are neither mutated nor deleted. Derived projections may be rebuilt, provided the immutable record history is preserved.
 - Approve a hold only when the resulting available balance is nonnegative. An active hold affects available balance, not ledger balance. Resolve unknown-authorization settlement behavior through the acceptance-criterion review and clarification process before implementing it.
 - Assess the specified overdraft fee no more than once per account per assessed day. Explicitly define how this interacts with historical replay and reversals.

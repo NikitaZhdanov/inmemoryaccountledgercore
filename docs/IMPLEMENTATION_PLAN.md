@@ -66,6 +66,8 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
 - **Status:** Implemented in [`internal/domain`](../internal/domain/money.go),
   with adjacent [unit tests](../internal/domain/money_test.go). Go 1.23.1 module
   baseline; standard library for production and Testify for unit tests.
+  Currency descriptors are now validated code/scale values; concrete currencies
+  are test fixtures or later application composition, not core constants.
   Submission diagnostics and raw-input retention remain in their later tasks.
 - **Scope:** Create the module and `internal/domain` package using the standard
   library for production and Testify for unit tests; record the actual Go toolchain
@@ -75,13 +77,15 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   raw amount text at the later input-record boundary. Distinguish input
   representability errors from derived arithmetic failures.
 - **Dependencies:** None.
-- **Use cases:** U03, U06, U07, X04, X10 (money primitives; submission behavior
+- **Use cases:** U03, U06, U07, X04, X10, X12 (money primitives; submission behavior
   follows in P05).
 - **Completion checks:** Independently tabulated AED/BHD precision and trailing
   zero cases pass. Both signed endpoints parse/format exactly; inputs just
   outside the endpoints reject. Every checked operation detects overflow,
   including minimum-value negation and intermediate accumulation. Cross-currency
-  arithmetic fails explicitly. No monetary calculation uses binary floating point.
+  arithmetic fails explicitly. Configurable scales zero/four/18 and same-code
+  scale conflicts are exercised; equal independently constructed descriptors
+  are compatible. No monetary calculation uses binary floating point.
 
 ### P02 — Exact interest rounding and conserving allocation
 
@@ -107,7 +111,8 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   `internal/repository/memory` with ordered detached snapshots,
   defensive copies, and all-or-nothing record-key validation. Separate internal
   record keys and attempt identities from supplied event IDs; storage owns no
-  business policy.
+  business policy. Account records carry validated code/scale descriptors and
+  opening money; no account, currency, or policy defaults are supplied here.
 - **Dependencies:** P01.
 - **Use cases:** H01, U04, U07, X11 (storage guarantees).
 - **Completion checks:** Append order survives read-back. Mutating submitted or
@@ -140,16 +145,23 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   outcomes, and diagnostics. Reject every reused event ID before any
   event-triggered effects, regardless of original outcome or payload equality. Compute a batch
   completely before append; continue after covered business rejections and
-  propagate technical failures.
+  propagate technical failures. Add core initialization with injected accounts
+  and explicit per-currency charges (zero means no fee). Before any processing or
+  append, reject invalid descriptors, conflicting scales for a code, missing
+  account-currency policies, negative charges, and incompatible policy money.
+  Copy configuration into core-owned state.
 - **Dependencies:** P01, P03, P04.
-- **Use cases:** H01, U03, U04, U06, U07, X04, X11 (ordinary input paths;
+- **Use cases:** H01, U03, U04, U05, U06, U07, X04, X11, X12 (ordinary input paths;
   authorization and reversal duplicate cases follow in P06/P07).
 - **Completion checks:** E1/E2 yield AED 250.00 and E4 later yields AED 650.00
   in isolated posting tests. Exact source fields/raw text survive. Invalid
   precision/out-of-range inputs retain diagnostics without financial effects;
   a subsequent fresh valid input succeeds. Identical/changed duplicate payloads
   preserve the original outcome and add no posting. Derived failure appends no
-  partial failing batch and is not relabeled as a domain rejection.
+  partial failing batch and is not relabeled as a domain rejection. Initialization
+  tests distinguish absent policies from an explicit currency-specific zero;
+  reject malformed configurations without records, accept a subsequent valid
+  configuration, and prove caller mutation cannot alter initialized policy.
 
 ### P06 — Authorization decisions and final settlement
 
@@ -189,15 +201,18 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   net fee only from eligibility; carry earlier net fees into later days. Compare
   required and recorded net charges under one account/day obligation and append linked
   assessments, refunds, or renewed adjustments. Replace derived post-fee daily
-  accruals; never post daily accrual ledger entries. Add the missing-BHD-policy
-  diagnostic keyed by account/day/cause with unchanged-repeat suppression.
+  accruals; never post daily accrual ledger entries. Obtain charges from validated
+  initialization configuration for every currency; an explicit zero policy posts
+  no fee entry or undefined-policy diagnostic.
 - **Dependencies:** P02, P03, P04, P05.
-- **Use cases:** H04, H05, U05, X03, X05, X06, X07, X09 (controlled close fixtures).
+- **Use cases:** H04, H05, H09, X03, X05, X06, X07, X09 (controlled close fixtures;
+  missing-policy initialization is covered in P05).
 - **Completion checks:** NUMBERS' E7 chronological fee/accrual oracle passes.
   A fee cannot sustain its own eligibility; refund and renewed eligibility share
   the original assessment identity. Repeated unchanged reconciliation/close adds
-  no records or diagnostics. Negative BHD preserves balance, reports undefined
-  policy, adds no charge/conversion, and permits continuation. Rebuilt
+  no records or diagnostics. Negative BHD under explicit no-fee configuration
+  preserves balance without a charge or undefined-policy error. A custom-code
+  currency with a configured nonzero charge exercises the same fee logic. Rebuilt
   accruals replace old values and never increase ledger or availability.
 
 ### P09 — Integrate backdated changes with closed-day processing
@@ -229,11 +244,12 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   base. Use the direct branch in DESIGN, with no provisional fee or iterative
   solver. Capitalization identity is per account/window.
 - **Dependencies:** P08, P09.
-- **Use cases:** H07, U05, U07, X03, X06, X08, X09.
+- **Use cases:** H07, H09, U07, X03, X06, X08, X09.
 - **Completion checks:** Independent rounded daily sums equal the single credits
   AED 1.03 and BHD 0.008; final closes are AED 466.03 and BHD 10.008.
   NUMBERS' Day 6 boundary fixtures close at AED 0.01, 0.00, and −25.01.
-  Negative BHD eligibility uses the diagnostic fallback after capitalization.
+  Negative BHD eligibility uses its configured zero charge after capitalization;
+  no runtime missing-policy fallback exists.
   No capitalization earns same-day interest; repeat finalization adds nothing.
   Overflow produces no partial finalization batch or misleading business rejection.
 
@@ -245,7 +261,9 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   `tests/replay`, which constructs fresh memory/ledger components. Preserve
   E1–E10 source order, including E10 after E9; never infer closing from
   booking-date changes.
-  Integrate all prior layers with checkpoint assertions before the printed report.
+  Receive configured account/currency descriptors from composition rather than
+  constructing defaults. Integrate all prior layers with checkpoint assertions
+  before the printed report.
 - **Dependencies:** P09, P10.
 - **Use cases:** H01–H07, U01, U02, U04, X01, X06, X09, X11.
 - **Completion checks:** Compare every canonical ID, kind, amount, currency,
@@ -263,6 +281,9 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   beside the package. In `cmd/replay/main.go`, construct a fresh memory repository,
   inject it into ledger, invoke scenario with that core, pass detached history
   and read-only projections to report, and print the agreed final daily table.
+  Compose AED/2 and BHD/3 descriptors, zero opening accounts, AED 25.00 policy,
+  and explicit BHD no-fee policy in main. Pass configuration to initialization
+  and descriptors to scenario; propagate initialization errors before replay/report.
   Extend `tests/replay` with end-to-end report assertions.
   Include every day/account, closing ledger balance, linked fee history with
   booking/value days, recorded authorization states, and errors/decision reasons.
@@ -270,6 +291,7 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   in [DEVELOPMENT](DEVELOPMENT.md).
 - **Dependencies:** P11.
 - **Use cases:** H08, X01, X04, X06; report outcomes from H01–H07, U01, U02.
+- **Configuration checks:** U05 and X12 at composition, using the P05 constructor.
 - **Completion checks:** `go run ./cmd/replay` succeeds. Repeated fresh runs print
   identical output in supplied day/account order at each currency's precision.
   Label the observation as restated after E1–E10 and Day 6 finalization and
@@ -278,6 +300,9 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   appear only on Days 4/5. Group charges/refunds by assessed day even though net
   final fees are zero. No extra original-snapshot table is printed. `main` owns
   composition; report does not mutate ledger state or construct dependencies.
+  Composition checks confirm exact descriptor/charge values and required policy
+  coverage; core constructor failure prevents replay/report. No concrete currency
+  constants or switches appear in domain/ledger, and scenario defines no defaults.
   `go list -deps ./...` succeeds and its import graph matches DESIGN without cycles.
 
 ### P13 — Investigate and preserve a genuine failing design test
@@ -311,7 +336,7 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
   Verify each TASK deliverable and every scenario's actual test coverage. Keep
   genuine limitations/deferred extensions explicit and record actual results.
 - **Dependencies:** P01–P13, including the observed genuine failure.
-- **Use cases:** H01–H08, U01–U07, X01–X11; separate P13 design-test evidence.
+- **Use cases:** H01–H09, U01–U07, X01–X12; separate P13 design-test evidence.
 - **Completion checks:** Run `go test ./...`, `go vet ./...`, and
   `go run ./cmd/replay`; check formatting and `go list -deps ./...` for the
   specified acyclic package graph. Confirm unit tests are beside each package

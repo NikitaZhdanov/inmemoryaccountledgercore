@@ -3,8 +3,8 @@
 An in-memory ledger for value-dated account balances, authorizations, fees, and
 daily interest, using exact monetary arithmetic.
 
-Exact AED/BHD money values and checked arithmetic are implemented; ledger
-processing and replay reporting remain planned.
+Configurable currencies, exact money values, and checked arithmetic are
+implemented; ledger processing and replay reporting remain planned.
 
 ## Requirements
 

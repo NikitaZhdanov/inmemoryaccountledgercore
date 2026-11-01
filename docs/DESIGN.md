@@ -31,6 +31,12 @@ Its range comfortably covers this workload and copying money needs no
 reference ownership rules. Cross-currency arithmetic is invalid; there is no
 conversion facility.
 
+Currency is an immutable descriptor constructed by `NewCurrency(code, scale)`:
+exactly three uppercase ASCII letters and an integer scale from zero through 18.
+The upper bound keeps the decimal unit factor within int64. Currency identity
+includes both fields, so matching codes at different scales cannot be added.
+The domain and ledger contain no concrete currency constants or code switches.
+
 Check parsing, scaling, addition, subtraction, negation, and accumulation for
 overflow before using their results. Out-of-range input retains its diagnostic
 and is rejected without financial effects; derived arithmetic overflow stops
@@ -53,10 +59,13 @@ tolerance, or intermediate floating point is needed.
 
 The implemented [domain package](../internal/domain/money.go) exposes:
 
+- [NewCurrency](../internal/domain/currency.go) constructs validated code/scale
+  descriptors; `Code()` reads the code, and `Scale()` validates the descriptor
+  and returns its decimal precision.
 - `ParseMoney(currency, raw)` for exact ASCII fixed-point parsing with an optional
   sign. Redundant fractional zeros are accepted; nonzero excess precision rejects
   without rounding. Future input records will retain the original text separately.
-- `NewMoney(currency, minor)` for signed `int64` minor units in a supported currency.
+- `NewMoney(currency, minor)` for signed `int64` minor units in a valid descriptor.
 - `Currency()` and `MinorUnits()` for reading a money value, and `Format()` for
   fixed-point amount text at that currency's scale.
 - `Add`, `Sub`, `Neg`, and `Sum` for checked arithmetic. Use `errors.Is` to
@@ -65,6 +74,30 @@ The implemented [domain package](../internal/domain/money.go) exposes:
 The Go zero value has no valid currency. Constructor validation, parsing grammar,
 and ordered-accumulation behavior are recorded in
 [A9](../AMBIGUITIES.md#a9--currency-precision-and-instalments).
+
+## Initialization and application configuration
+
+The future ledger constructor receives the repository plus accounts and an
+explicit per-currency charge map, proposed as
+`map[domain.Currency]domain.Money`. A nonnegative charge is the overdraft policy;
+a present currency-specific zero is the explicit no-fee policy. Check membership
+separately from its monetary value. Validate every account/policy descriptor,
+one consistent scale per code, policy coverage for all account currencies, and
+charge compatibility/nonnegativity before processing or appending history.
+Keep detached, core-owned configuration after initialization. Implement and test
+these checks in P05 once account records exist from P03.
+
+When implemented, cmd/replay constructs the canonical descriptors/accounts and
+injects these values; no domain/ledger defaults supply them:
+
+| Currency | Scale | Daily charge | Source |
+| --- | --- | --- | --- |
+| AED | 2 | 25.00 | TASK fee |
+| BHD | 3 | 0.000 (explicit no fee) | Assumption in [A5](../AMBIGUITIES.md#a5--fee-bases-and-missing-bhd-tariff) |
+
+Unit/integration fixtures provide their own explicit descriptors and policies.
+Scenario inputs receive configured descriptors from composition; the scenario
+does not construct currency defaults. P12 wires and tests this application setup.
 
 ## Small code layout
 
@@ -103,7 +136,7 @@ genuine failing test belongs beside its package for a local limitation or in
 
 | Model | Contents and purpose |
 | --- | --- |
-| Account / currency | Supplied account identity, currency, opening balance, and formatting scale. |
+| Account / currency | Supplied identity, validated code/scale descriptor, and opening balance. Concrete definitions are injected at composition. |
 | Input event | Original ID, kind, account, raw amount, booking/value days, and authorization/reversal reference; preserve supplied order and fields. |
 | Input attempt / outcome | Each submission and its accepted, declined, or rejected result. A duplicate attempt retains its payload/diagnostic without replacing the original event or outcome. |
 | Monetary entry | Signed amount, account, booking/value days, kind, source/correction cause, and links to the original entry or fee obligation. Instalment entries also retain their position. |
@@ -164,9 +197,8 @@ After a financial change affecting closed history, reconcile affected closed
 days chronologically. For each account/day, sum known value-dated entries,
 exclude that day's own net fee from eligibility, compare required charge with
 recorded net fee, and append any linked difference. Earlier days' corrections
-carry forward. Negative BHD eligibility produces the agreed missing-policy
-diagnostic without a fee because the tariff is unspecified. Identify these
-diagnostics by account/day/cause so unchanged repeated reconciliation adds nothing.
+carry forward. Resolve the required charge from initialized configuration; the
+explicit no-fee policy produces no charge or missing-policy diagnostic for BHD.
 
 Then replace that day's unpaid accrual using its post-fee positive balance.
 Unpaid interest is not a monetary entry and affects neither ledger nor holds.
@@ -179,7 +211,8 @@ accrual, and capitalization before appending final postings, using the
 [specified equations](SPEC.md#day-6-finalization). A direct branch suffices:
 when the pre-fee/pre-capitalization base is negative, current-day accrual is
 zero and prior accruals determine fee eligibility; when nonnegative, no fee is
-due and interest uses that base. Apply the BHD fallback to negative eligibility.
+due and interest uses that base. Use the injected charge for every currency;
+the explicit zero-charge policy remains zero for negative eligibility.
 Exclude capitalization from its own interest base. Post the exact sum of corrected
 daily accruals as one credit per account/window; repeated close/finalization
 must append nothing. No iterative solver or provisional fee is necessary.
@@ -215,7 +248,9 @@ closing functions. Cover:
   availability boundary, unknown-authorization rejection and continuation, and
   preserved decisions after restatement.
 - Backdating, linked reversal/refunds, fee self-eligibility and chronological
-  carry-forward, missing BHD policy, and unchanged repeat reconciliation/closing.
+  carry-forward, explicit BHD no-fee policy, and unchanged repeat reconciliation/closing.
+- Configurable scales, equal-descriptor compatibility, conflicting definitions,
+  initialization-policy coverage, and detached configuration ownership.
 - Duplicate IDs across original success/decline/rejection and changed payloads;
   preserved source fields/history and defensive-copy isolation.
 - All final daily balances/accruals, fee history, Day 6 boundaries, capitalization

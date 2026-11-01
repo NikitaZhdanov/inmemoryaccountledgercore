@@ -20,7 +20,8 @@ Calculations and verification use exact equality, without numerical tolerance.
 | ACC-001/ACC-002; two accounts | TASK.md AED/BHD accounts | Identifiers cannot be halved; omitting an account changes scope. |
 | E1–E10; ten events | TASK.md canonical replay sequence | Identifiers cannot be halved; fewer events omit required inputs. |
 | AED 0.00; BHD 0.000 | TASK.md opening balances | Zero is its own half; nonzero changes the source. |
-| AED 25.00 | TASK.md daily fee | Half violates the specified charge. BHD tariff/FX remain unspecified; see [A5](AMBIGUITIES.md#a5--fee-bases-and-missing-bhd-tariff). |
+| AED 25.00 | TASK.md daily fee, supplied at application composition | Half violates the specified charge. BHD uses the separate explicit no-fee assumption in [A5](AMBIGUITIES.md#a5--fee-bases-and-missing-bhd-tariff). |
+| BHD 0.000 overdraft charge | Explicit no-fee assumption, replacing the unimplemented runtime undefined-policy proposal | Zero is its own half; it is configured rather than inferred from a missing policy. |
 | Once per account/assessed day | TASK.md assessment frequency | A half-occurrence is meaningless; identity behavior is in [SPEC](docs/SPEC.md#fees). |
 | 0.04% = 0.0004 = 1/2,500 per day | TASK.md exact positive-balance interest rate | Half changes the contractual rate. |
 | AED two places; BHD three | TASK.md storage/rounding scales | Discrete currency conventions, not adjustable magnitudes. |
@@ -227,7 +228,7 @@ point each occupy one ASCII character; these are syntax lengths, not tunable lim
 | Sums `[Max, +1, −1]`, `[Min, −1, +1]` | Intermediate overflow despite representable mathematical total | Minimum cancellation sequence; halving avoids overflow. |
 | Sums `[Max, −1, +1]`, `[Min, +1, −1]`, and `[Max, Min] → −1` | Safe ordered accumulation and cancellation | Boundary complements verify no false overflow; half changes endpoint/parity properties. |
 | Empty sum → 0 in the requested currency | Additive identity; no count limit | Zero terms cannot be halved. |
-| `USD`, empty currency | Unsupported identifier / missing Go zero-value currency | Identifiers have no half; neither implies a conversion or default currency. |
+| Zero-value currency | Missing code in an uninitialized descriptor | There is no default currency. Valid codes such as USD are accepted by the configurable constructor. |
 | Empty text, sign-only text, `.1`, `1.`, `1.2.3`, `1e2`, `1,000.00`, `1_000`, whitespace, double/mixed signs, `NaN`, `Inf`, Unicode digits/minus | Lexical rejection fixtures for the documented ASCII fixed-point grammar | Syntax examples, not monetary magnitudes; halving is meaningless. |
 
 Every error-path assertion also checks that no partial money value is returned.
@@ -264,3 +265,27 @@ Both dependencies are reachable only through tests; production imports remain
 standard library. Equality uses Testify `Equal`, preserving expected numeric
 types and exact values; no tolerance or extra verification parameter is selected.
 `govulncheck -test` includes these test paths in the existing security check.
+
+### Configurable currency verification
+
+All original AED/BHD money fixtures retain their exact expectations; tests now
+construct their descriptors locally. Production defines no AED/BHD constants.
+
+| Values | Meaning, source or rationale | Why these rather than half |
+| --- | --- | --- |
+| Code length 3; ASCII A–Z | Project syntax convention for currency identifiers, not a registry of recognized currencies | Length/alphabet are discrete syntax; halving changes the identifier format. |
+| Scales 0–18; rejected −1 and 19 | Technical range; 10^18 fits int64 while 10^19 does not. Boundaries test accepted endpoints and adjacent failures | Half of 18 would reject supported higher precision; endpoint probes need the adjacent values. |
+| USD/2, PTS/0, TOK/4, MAX/18 | Independent code/scale fixtures, including non-replay currencies and both scale endpoints | Codes are labels; halving scales changes representability. Scale four exercises precision beyond the canonical currencies. |
+| Empty, US, USDD, usd, US1, spaced and fullwidth codes | Invalid length/ASCII/case fixtures | Lexical probes have no monetary half. |
+| PTS +0012.000 → 12, −12 → −12, zero → zero | Scale-zero parsing/formatting; redundant fractional zeros remain exact | Selected signed/zero fixtures exercise integer formatting; halves do not add a path. |
+| PTS signed int64 endpoints and one unit outside | Scale-zero boundary text equals its minor-unit integer | Halving misses the representation boundary. |
+| TOK 1.2 → 12,000 → 1.2000; −12.345600 → −123,456 → −12.3456; 0.0001 → 1 | Scale-four padding, redundant zeros, and minimum unit | Derived by multiplying by 10^4; half a minor unit is unrepresentable. |
+| MAX zero → 0.000000000000000000; 0.000000000000000001 → 1 | Scale-18 padding/minimum unit | Derived by 10^18; half a unit is unrepresentable. |
+| MAX 9.223372036854775807 / −9.223372036854775808, with redundant final zero | Signed int64 endpoints at scale 18; adjacent out-of-range values end in 808 / 809 | Derived from the endpoints divided by 10^18; half no longer probes bounds. |
+| PTS 1.1, TOK 1.00001, MAX 0.0000000000000000001 | Nonzero excess precision at scales 0, 4, 18 | Adjacent fractional-unit failures; halving still fails but changes the selected probe. |
+| TOK/4 vs TOK/3; TOK/4 vs PTS/4 | Same-code/different-scale and different-code/same-scale incompatibility | Discrete descriptor comparisons; matching one field cannot establish compatibility. |
+| Independently constructed TOK/4 operands of 1 minor unit | Add/sum → 2, subtract → 0, proving equality by value rather than instance | One unit is the smallest positive operand; half is unrepresentable. |
+
+No binary floating point or principal rounding is introduced. Initialization and
+configured fee oracles are scheduled with their ledger/composition tasks; the
+canonical tables above remain unchanged.

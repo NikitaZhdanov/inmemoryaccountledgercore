@@ -10,6 +10,18 @@ import (
 	"inmemoryaccountledgercore/internal/domain"
 )
 
+func currency(t *testing.T, code string, scale int) domain.Currency {
+	t.Helper()
+	c, err := domain.NewCurrency(code, scale)
+	require.NoError(t, err)
+	return c
+}
+
+func canonicalCurrencies(t *testing.T) (domain.Currency, domain.Currency) {
+	t.Helper()
+	return currency(t, "AED", 2), currency(t, "BHD", 3)
+}
+
 func money(t *testing.T, currency domain.Currency, minor int64) domain.Money {
 	t.Helper()
 	m, err := domain.NewMoney(currency, minor)
@@ -18,14 +30,15 @@ func money(t *testing.T, currency domain.Currency, minor int64) domain.Money {
 }
 
 func TestCurrencyAndConstruction(t *testing.T) {
+	aed, bhd := canonicalCurrencies(t)
 	for _, tc := range []struct {
 		currency domain.Currency
 		scale    int
 	}{
-		{domain.AED, 2},
-		{domain.BHD, 3},
+		{aed, 2},
+		{bhd, 3},
 	} {
-		t.Run(string(tc.currency), func(t *testing.T) {
+		t.Run(tc.currency.Code(), func(t *testing.T) {
 			scale, err := tc.currency.Scale()
 			require.NoError(t, err)
 			assert.Equal(t, tc.scale, scale)
@@ -36,58 +49,58 @@ func TestCurrencyAndConstruction(t *testing.T) {
 			}
 		})
 	}
-	for _, currency := range []domain.Currency{"", "USD"} {
-		_, err := currency.Scale()
-		require.ErrorIs(t, err, domain.ErrInvalidCurrency)
-		m, err := domain.NewMoney(currency, 0)
-		assertMoneyError(t, m, err, domain.ErrInvalidCurrency)
-		m, err = domain.ParseMoney(currency, "0")
-		assertMoneyError(t, m, err, domain.ErrInvalidCurrency)
-		m, err = domain.Sum(currency)
-		assertMoneyError(t, m, err, domain.ErrInvalidCurrency)
-	}
+	var invalid domain.Currency
+	_, err := invalid.Scale()
+	require.ErrorIs(t, err, domain.ErrInvalidCurrency)
+	m, err := domain.NewMoney(invalid, 0)
+	assertMoneyError(t, m, err, domain.ErrInvalidCurrency)
+	m, err = domain.ParseMoney(invalid, "0")
+	assertMoneyError(t, m, err, domain.ErrInvalidCurrency)
+	m, err = domain.Sum(invalid)
+	assertMoneyError(t, m, err, domain.ErrInvalidCurrency)
 }
 
 // Literal minor-unit oracles come from NUMBERS.md, independently of Format.
 func TestParseMoney(t *testing.T) {
+	aed, bhd := canonicalCurrencies(t)
 	for _, tc := range []struct {
 		currency domain.Currency
 		raw      string
 		minor    int64
 	}{
-		{domain.AED, "0", 0},
-		{domain.AED, "-0.000", 0},
-		{domain.BHD, "+0.0000", 0},
-		{domain.AED, "1", 100},
-		{domain.AED, "1.0", 100},
-		{domain.AED, "1.00", 100},
-		{domain.AED, "1.000", 100},
-		{domain.AED, "1.2", 120},
-		{domain.BHD, "1", 1000},
-		{domain.BHD, "1.0", 1000},
-		{domain.BHD, "1.00", 1000},
-		{domain.BHD, "1.000", 1000},
-		{domain.BHD, "1.0000", 1000},
-		{domain.BHD, "1.2", 1200},
-		{domain.BHD, "1.23", 1230},
-		{domain.AED, "0.01", 1},
-		{domain.AED, "-0.01", -1},
-		{domain.BHD, "0.001", 1},
-		{domain.BHD, "-0.001", -1},
-		{domain.AED, "+0012.30", 1230},
-		{domain.AED, "-12.30", -1230},
-		{domain.BHD, "12.345", 12345},
-		{domain.BHD, "-00012.345000", -12345},
-		{domain.AED, "92233720368547758.07", math.MaxInt64},
-		{domain.AED, "-92233720368547758.08", math.MinInt64},
-		{domain.BHD, "9223372036854775.807", math.MaxInt64},
-		{domain.BHD, "-9223372036854775.808", math.MinInt64},
-		{domain.AED, "+0092233720368547758.07000", math.MaxInt64},
-		{domain.AED, "-0092233720368547758.08000", math.MinInt64},
-		{domain.BHD, "+009223372036854775.807000", math.MaxInt64},
-		{domain.BHD, "-009223372036854775.808000", math.MinInt64},
+		{aed, "0", 0},
+		{aed, "-0.000", 0},
+		{bhd, "+0.0000", 0},
+		{aed, "1", 100},
+		{aed, "1.0", 100},
+		{aed, "1.00", 100},
+		{aed, "1.000", 100},
+		{aed, "1.2", 120},
+		{bhd, "1", 1000},
+		{bhd, "1.0", 1000},
+		{bhd, "1.00", 1000},
+		{bhd, "1.000", 1000},
+		{bhd, "1.0000", 1000},
+		{bhd, "1.2", 1200},
+		{bhd, "1.23", 1230},
+		{aed, "0.01", 1},
+		{aed, "-0.01", -1},
+		{bhd, "0.001", 1},
+		{bhd, "-0.001", -1},
+		{aed, "+0012.30", 1230},
+		{aed, "-12.30", -1230},
+		{bhd, "12.345", 12345},
+		{bhd, "-00012.345000", -12345},
+		{aed, "92233720368547758.07", math.MaxInt64},
+		{aed, "-92233720368547758.08", math.MinInt64},
+		{bhd, "9223372036854775.807", math.MaxInt64},
+		{bhd, "-9223372036854775.808", math.MinInt64},
+		{aed, "+0092233720368547758.07000", math.MaxInt64},
+		{aed, "-0092233720368547758.08000", math.MinInt64},
+		{bhd, "+009223372036854775.807000", math.MaxInt64},
+		{bhd, "-009223372036854775.808000", math.MinInt64},
 	} {
-		t.Run(string(tc.currency)+"/"+tc.raw, func(t *testing.T) {
+		t.Run(tc.currency.Code()+"/"+tc.raw, func(t *testing.T) {
 			got, err := domain.ParseMoney(tc.currency, tc.raw)
 			require.NoError(t, err)
 			assert.Equal(t, tc.currency, got.Currency())
@@ -97,24 +110,25 @@ func TestParseMoney(t *testing.T) {
 }
 
 func TestParseMoneyRepresentabilityErrors(t *testing.T) {
+	aed, bhd := canonicalCurrencies(t)
 	for _, tc := range []struct {
 		currency domain.Currency
 		raw      string
 		wantErr  error
 	}{
-		{domain.AED, "1.005", domain.ErrPrecision},
-		{domain.AED, "0.0001", domain.ErrPrecision},
-		{domain.BHD, "1.0001", domain.ErrPrecision},
-		{domain.BHD, "-0.0001", domain.ErrPrecision},
-		{domain.AED, "92233720368547758.08", domain.ErrAmountOutOfRange},
-		{domain.AED, "-92233720368547758.09", domain.ErrAmountOutOfRange},
-		{domain.BHD, "9223372036854775.808", domain.ErrAmountOutOfRange},
-		{domain.BHD, "-9223372036854775.809", domain.ErrAmountOutOfRange},
-		{domain.AED, "92233720368547759", domain.ErrAmountOutOfRange},
-		{domain.BHD, "9223372036854776", domain.ErrAmountOutOfRange},
-		{domain.AED, "9223372036854775808", domain.ErrAmountOutOfRange},
+		{aed, "1.005", domain.ErrPrecision},
+		{aed, "0.0001", domain.ErrPrecision},
+		{bhd, "1.0001", domain.ErrPrecision},
+		{bhd, "-0.0001", domain.ErrPrecision},
+		{aed, "92233720368547758.08", domain.ErrAmountOutOfRange},
+		{aed, "-92233720368547758.09", domain.ErrAmountOutOfRange},
+		{bhd, "9223372036854775.808", domain.ErrAmountOutOfRange},
+		{bhd, "-9223372036854775.809", domain.ErrAmountOutOfRange},
+		{aed, "92233720368547759", domain.ErrAmountOutOfRange},
+		{bhd, "9223372036854776", domain.ErrAmountOutOfRange},
+		{aed, "9223372036854775808", domain.ErrAmountOutOfRange},
 	} {
-		t.Run(string(tc.currency)+"/"+tc.raw, func(t *testing.T) {
+		t.Run(tc.currency.Code()+"/"+tc.raw, func(t *testing.T) {
 			got, err := domain.ParseMoney(tc.currency, tc.raw)
 			assertMoneyError(t, got, err, tc.wantErr)
 			assert.NotErrorIs(t, err, domain.ErrArithmeticOverflow,
@@ -124,12 +138,13 @@ func TestParseMoneyRepresentabilityErrors(t *testing.T) {
 }
 
 func TestParseMoneySyntaxErrors(t *testing.T) {
-	for _, currency := range []domain.Currency{domain.AED, domain.BHD} {
+	aed, bhd := canonicalCurrencies(t)
+	for _, currency := range []domain.Currency{aed, bhd} {
 		for _, raw := range []string{
 			"", "+", "-", ".1", "1.", "1.2.3", "1e2", "1,000.00", "1_000",
 			" 1", "1 ", "1\n", "1 0", "--1", "++1", "+-1", "NaN", "Inf", "１.００", "−1",
 		} {
-			t.Run(string(currency)+"/"+raw, func(t *testing.T) {
+			t.Run(currency.Code()+"/"+raw, func(t *testing.T) {
 				got, err := domain.ParseMoney(currency, raw)
 				assertMoneyError(t, got, err, domain.ErrInvalidAmount)
 			})
@@ -140,29 +155,30 @@ func TestParseMoneySyntaxErrors(t *testing.T) {
 // Construct money from tabulated minor units to verify formatting independently
 // of parsing.
 func TestMoneyFormat(t *testing.T) {
+	aed, bhd := canonicalCurrencies(t)
 	for _, tc := range []struct {
 		currency domain.Currency
 		minor    int64
 		want     string
 	}{
-		{domain.AED, 0, "0.00"},
-		{domain.BHD, 0, "0.000"},
-		{domain.AED, 1, "0.01"},
-		{domain.AED, -1, "-0.01"},
-		{domain.BHD, 1, "0.001"},
-		{domain.BHD, -1, "-0.001"},
-		{domain.AED, 100, "1.00"},
-		{domain.BHD, 1000, "1.000"},
-		{domain.AED, 1230, "12.30"},
-		{domain.AED, -1230, "-12.30"},
-		{domain.BHD, 12345, "12.345"},
-		{domain.BHD, -12345, "-12.345"},
-		{domain.AED, math.MaxInt64, "92233720368547758.07"},
-		{domain.AED, math.MinInt64, "-92233720368547758.08"},
-		{domain.BHD, math.MaxInt64, "9223372036854775.807"},
-		{domain.BHD, math.MinInt64, "-9223372036854775.808"},
+		{aed, 0, "0.00"},
+		{bhd, 0, "0.000"},
+		{aed, 1, "0.01"},
+		{aed, -1, "-0.01"},
+		{bhd, 1, "0.001"},
+		{bhd, -1, "-0.001"},
+		{aed, 100, "1.00"},
+		{bhd, 1000, "1.000"},
+		{aed, 1230, "12.30"},
+		{aed, -1230, "-12.30"},
+		{bhd, 12345, "12.345"},
+		{bhd, -12345, "-12.345"},
+		{aed, math.MaxInt64, "92233720368547758.07"},
+		{aed, math.MinInt64, "-92233720368547758.08"},
+		{bhd, math.MaxInt64, "9223372036854775.807"},
+		{bhd, math.MinInt64, "-9223372036854775.808"},
 	} {
-		t.Run(string(tc.currency)+"/"+tc.want, func(t *testing.T) {
+		t.Run(tc.currency.Code()+"/"+tc.want, func(t *testing.T) {
 			got, err := money(t, tc.currency, tc.minor).Format()
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, got)
@@ -175,8 +191,9 @@ func TestMoneyFormat(t *testing.T) {
 }
 
 func TestCheckedArithmetic(t *testing.T) {
-	for _, currency := range []domain.Currency{domain.AED, domain.BHD} {
-		t.Run(string(currency), func(t *testing.T) {
+	aed, bhd := canonicalCurrencies(t)
+	for _, currency := range []domain.Currency{aed, bhd} {
+		t.Run(currency.Code(), func(t *testing.T) {
 			for _, tc := range []struct {
 				name     string
 				op       func(domain.Money, domain.Money) (domain.Money, error)
@@ -233,7 +250,8 @@ func TestCheckedArithmetic(t *testing.T) {
 }
 
 func TestSum(t *testing.T) {
-	for _, currency := range []domain.Currency{domain.AED, domain.BHD} {
+	aed, bhd := canonicalCurrencies(t)
+	for _, currency := range []domain.Currency{aed, bhd} {
 		for _, tc := range []struct {
 			name     string
 			terms    []int64
@@ -247,7 +265,7 @@ func TestSum(t *testing.T) {
 			{"safe lower order", []int64{math.MinInt64, 1, -1}, math.MinInt64, false},
 			{"endpoint cancellation", []int64{math.MaxInt64, math.MinInt64}, -1, false},
 		} {
-			t.Run(string(currency)+"/"+tc.name, func(t *testing.T) {
+			t.Run(currency.Code()+"/"+tc.name, func(t *testing.T) {
 				var terms []domain.Money
 				for _, minor := range tc.terms {
 					terms = append(terms, money(t, currency, minor))
@@ -265,7 +283,8 @@ func TestSum(t *testing.T) {
 }
 
 func TestCurrencyChecksOnOperations(t *testing.T) {
-	aed, bhd := money(t, domain.AED, 0), money(t, domain.BHD, 0)
+	aedCurrency, bhdCurrency := canonicalCurrencies(t)
+	aed, bhd := money(t, aedCurrency, 0), money(t, bhdCurrency, 0)
 	var invalid domain.Money
 	for _, tc := range []struct {
 		name    string
@@ -287,11 +306,11 @@ func TestCurrencyChecksOnOperations(t *testing.T) {
 	}
 	got, err := invalid.Neg()
 	assertMoneyError(t, got, err, domain.ErrInvalidCurrency)
-	got, err = domain.Sum(domain.AED, aed, bhd)
+	got, err = domain.Sum(aedCurrency, aed, bhd)
 	assertMoneyError(t, got, err, domain.ErrCurrencyMismatch)
-	got, err = domain.Sum(domain.BHD, bhd, aed)
+	got, err = domain.Sum(bhdCurrency, bhd, aed)
 	assertMoneyError(t, got, err, domain.ErrCurrencyMismatch)
-	got, err = domain.Sum(domain.AED, aed, invalid)
+	got, err = domain.Sum(aedCurrency, aed, invalid)
 	assertMoneyError(t, got, err, domain.ErrInvalidCurrency)
 }
 

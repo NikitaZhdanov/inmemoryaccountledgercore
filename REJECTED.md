@@ -20,9 +20,14 @@ accept 5 conditionally. TASK.md remains unchanged.
 - Replaced handwritten assertion/error checks with Testify `assert`/`require`
   to adopt the project's selected assertion library. Retained Go's test runner,
   fixture tables, and exact expectations; see [A13](AMBIGUITIES.md#a13--testify-unit-test-assertions).
+- Replaced the implemented AED/BHD currency constants and scale switch with
+  validated code/scale descriptors so currency definitions can be supplied at
+  composition; see [A14](AMBIGUITIES.md#a14--configured-currency-identity-and-initialization).
 
 Earlier specification and design alternatives are recorded in
 [A2](AMBIGUITIES.md#a2--storage-boundary),
 [A3](AMBIGUITIES.md#a3--unmatched-settlement),
 [A10](AMBIGUITIES.md#a10--duplicate-ids-and-errors), and
 [A11](AMBIGUITIES.md#a11--required-failing-test).
+The superseded runtime undefined-BHD-policy proposal is recorded in
+[A5](AMBIGUITIES.md#a5--fee-bases-and-missing-bhd-tariff).
