@@ -315,8 +315,12 @@ func TestUnimplementedWorkflowsAppendNothing(t *testing.T) {
 		assert.Equal(t, domain.InputOutcome{}, outcome)
 		assert.Equal(t, before, repository.History())
 	}
-	input.Kind, input.InstalmentCount = domain.InputCredit, 3
+	input.Kind, input.InstalmentCount = domain.InputDebit, 3
 	_, err := core.Submit(input)
+	require.ErrorIs(t, err, ErrUnsupportedInput)
+	assert.Equal(t, before, repository.History())
+	input.Kind, input.InstalmentCount = domain.InputCredit, -1
+	_, err = core.Submit(input)
 	require.ErrorIs(t, err, ErrUnsupportedInput)
 	assert.Equal(t, before, repository.History())
 }

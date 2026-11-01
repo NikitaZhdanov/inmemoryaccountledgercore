@@ -1,9 +1,9 @@
 # Implementation plan
 
-Status: P01–P06 implemented for their specified workflows; P07–P14 remain planned.
+Status: P01–P07 implemented for their specified workflows; P08–P14 remain planned.
 Money, calculation, repository, projection, configuration, posting, authorization,
-and settlement tests exist, including real-component E1–E6 integration; full
-replay and the required failing design test remain pending.
+settlement, reversal, and instalment tests exist, including real-component posting
+integration; full replay and the required failing design test remain pending.
 
 [TASK](TASK.md) preserves the assignment; [SPEC](SPEC.md) defines agreed behavior;
 [DESIGN](DESIGN.md) proposes its Go implementation; [USE_CASES](USE_CASES.md)
@@ -211,6 +211,16 @@ compose real components before the scenario runner exists.
 
 ### P07 — Linked reversal and instalment posting
 
+- **Status:** Implemented in [principal corrections](../internal/ledger/corrections.go)
+  and [instalment posting](../internal/ledger/instalments.go), with adjacent
+  unit tests and [real-component integration](../tests/replay/corrections_test.go).
+  E9 derives E7's inverse from the stored debit, preserving its original record
+  and value day. Internal correction repeats produce no records; duplicate E9/E10
+  inputs reject before effects. Fresh attempts to reverse an already reversed
+  debit record business rejections. E10 posts all three ordered BHD credits in one
+  batch. Tests cover retained source fields, currency isolation, exact totals,
+  and technical-failure atomicity. Fee refunds, closed-day accrual restoration,
+  and full E7/E8/E9 integration remain in P08/P09.
 - **Scope:** In `internal/ledger`, add E9's principal reversal linked to E7,
   retaining the original record and using booking Day 6/value Day 2. Add E10's
   ordered instalment entries with its original Day 5 dates. Separate

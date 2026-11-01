@@ -119,7 +119,8 @@ Additional allocation oracles apply at both currency scales:
 
 P04 history fixtures record principal, fee, and correction effects directly.
 P05 additionally posts E1/E2/E4 through the core; P06 integration submits E1–E6.
-Later event processing remains planned. All balances below are AED.
+P07 adds E7/E9 principal posting and E10 instalments; fee generation/refunds and
+closed-day restoration remain planned. All balances below are AED.
 
 | Observation | Value day | Fee-free balance | Posted balance |
 | --- | ---: | ---: | ---: |
@@ -227,6 +228,32 @@ from 0.000 to 0.004 without changing AED. Final values appear below.
 - Approval appends three records (attempt, outcome, transition); decline appends
   four with its diagnostic. Final settlement appends four (attempt, outcome,
   debit, transition); unknown-ID rejection appends three without financial effects.
+
+### Reversal and instalment posting fixtures
+
+- E7's signed AED −620.00 entry has a linked AED +620.00 inverse, booked Day 6
+  and value-dated Day 2. A direct AED 250.00 opening fixture becomes −370.00
+  after E7 and 250.00 after E9. In the E1–E7 integration without fees, the
+  inverse restores Days 1–6 to 250.00, 250.00, 650.00, 465.00, 465.00, 465.00.
+  Full fee/refund balances remain specified in the checkpoint table.
+- E9 contributes three records: attempt, outcome, inverse. E10 contributes five:
+  attempt, outcome, three instalments. Repeated internal principal correction
+  contributes zero; each duplicate input or fresh attempt to reverse an already
+  reversed debit contributes three rejection records. Neither adds a posting.
+  A fresh AED 0.01 credit after the latter rejection changes the direct fixture
+  balance from 250.00 to 250.01, proving processing continues.
+- E10's 10,000 BHD minor units allocate as 3,333; 3,333; 3,334, as above.
+  Posting fixtures also use two units across three parts (0; 0; 2), zero across
+  three parts, and one-part 10.0000 (10,000 units), retaining exact source text.
+  BHD 10.0001 rejects excess precision; 9223372036854775.808 is one minor unit
+  above the positive endpoint; −0.001 is the smallest representable negative
+  amount and rejects sign.
+- Opening one unit, a Day 2 debit of one unit, and a Day 3 credit of MaxInt64
+  fit before reversal. Restoring the debit fits Day 2 but overflows Day 3 by one
+  unit. A stored MinInt64 debit's inverse also overflows checked negation.
+- Opening MaxInt64 − 9,999 BHD units plus E10's 10,000 units overflows only at
+  its last instalment: the first two parts total 6,666; the final total exceeds
+  MaxInt64 by one. No part of the failing batch is appended.
 
 ## Expected replay results
 
