@@ -1,7 +1,8 @@
 # Implementation plan
 
-Status: planning only. No implementation is authorized by this document; no
-ledger code, executable tests, or observed design-test failure exists yet.
+Status: P01 implemented at the human's request; P02–P14 remain planned. This
+document does not itself authorize further implementation. Money unit tests
+exist; no ledger replay or observed design-test failure exists yet.
 
 [TASK](TASK.md) preserves the assignment; [SPEC](SPEC.md) defines agreed behavior;
 [DESIGN](DESIGN.md) proposes its Go implementation; [USE_CASES](USE_CASES.md)
@@ -32,7 +33,8 @@ fields from TASK. Production calculations must not generate their own test
 oracles. Once Go files exist, format changed files with `gofmt`, run focused
 tests plus `go test ./...` and `go vet ./...` for each completed code task, and
 review its diff. The separately tagged failing test is excluded from normal
-checks. All completion checks below are future requirements, not reported results.
+checks. Completion checks below define requirements; actual outcomes belong in
+[WORKLOG](../WORKLOG.md).
 
 Follow the [package/import map](DESIGN.md#small-code-layout): `internal/domain`
 owns shared models and money; `internal/ledger` owns business logic and the small
@@ -56,6 +58,10 @@ as packages are introduced and verify the eventual graph with `go list -deps ./.
 
 ### P01 — Bootstrap Go and exact money representation
 
+- **Status:** Implemented in [`internal/domain`](../internal/domain/money.go),
+  with adjacent [unit tests](../internal/domain/money_test.go). Go 1.23.1 module
+  baseline; standard library only. Submission diagnostics and raw-input retention
+  remain in their later tasks.
 - **Scope:** Create the module and `internal/domain` package using the standard
   library only; record the actual Go toolchain and module baseline. Add currency
   scales, `int64` minor-unit money, exact decimal parsing/formatting, currency

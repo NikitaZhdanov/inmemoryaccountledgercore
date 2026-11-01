@@ -17,7 +17,7 @@ accept 5 conditionally. TASK.md remains unchanged.
 
 ## Abandoned approaches
 
-No build approach was abandoned: implementation has not begun. Discarded
+No build approach was abandoned during P01. Discarded
 specification proposals, rather than invented build attempts, are recorded with
 their replacements and reasons in [A3](AMBIGUITIES.md#a3--unmatched-settlement),
 [A10](AMBIGUITIES.md#a10--duplicate-ids-and-errors), and

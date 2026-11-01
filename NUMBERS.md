@@ -3,8 +3,12 @@
 This file owns numerical sources, justifications, calculations, and verification
 parameters. [SPEC](docs/SPEC.md) defines behavior; [AMBIGUITIES](AMBIGUITIES.md)
 explains business choices. The [Go design](docs/DESIGN.md#language-and-tooling)
-uses checked `int64` minor units with the representation bounds below. The
-toolchain baseline remains to be recorded when implementation begins.
+uses checked `int64` minor units with the representation bounds below.
+P01 uses Go module `inmemoryaccountledgercore`, baseline Go 1.23.1, observed
+toolchain `go1.23.1 darwin/amd64`, and no external dependencies. The module path
+is a local import identity, not a network location; the runtime baseline matches
+the available toolchain rather than speculating about an untested older version.
+Version labels and platform names cannot meaningfully be halved.
 Calculations and verification use exact equality, without numerical tolerance.
 
 ## Constants and sources
@@ -196,3 +200,53 @@ Duplicate verification uses two submissions, the minimum to trigger duplication;
 half gives one and never exercises rejection. Cover identical/changed payloads,
 monetary/authorization inputs, and originally rejected IDs. This count is not a
 retry limit. Monetary assertions use exact equality, not tolerances.
+
+### P01 money verification
+
+P01 uses literal minor-unit/decimal expectations independent of its parser and
+formatter. Test names and array positions are identifiers, not numeric policy.
+The decimal radix is 10 (`strconv` base and fixed-point grammar); halving would
+interpret different numbers. Scale, zero, unit factors, and `int64` bounds are
+already sourced above. Padding uses the scale, and the optional sign and decimal
+point each occupy one ASCII character; these are syntax lengths, not tunable limits.
+
+| Fixtures / constants | Meaning, source or derivation | Why these rather than half |
+| --- | --- | --- |
+| AED 0 / −0.000 → 0 minor units → 0.00; BHD +0.0000 → 0 → 0.000 | Zero/sign normalization and redundant-zero handling | Zero is its own half; syntax variants probe normalization. |
+| AED 1 / 1.0 / 1.00 / 1.000 → 100; BHD 1 / 1.0 / 1.00 / 1.000 / 1.0000 → 1,000 | Same principal at different input precisions; human's trailing-zero examples | Halving adds no new representability or padding case. |
+| AED 1.2 → 120; BHD 1.2 → 1,200 and 1.23 → 1,230 | Nonzero shorter fractions padded on the right to the currency scale | These distinguish padding direction; halving adds no new path. |
+| AED 0.01 → 1; BHD 0.001 → 1; corresponding negatives | Smallest supported currency units | Half is unrepresentable. |
+| AED +0012.30 → 1,230; −12.30 → −1,230; BHD 12.345 → 12,345; −00012.345000 → −12,345 | Fixed-point leading zeros, sign, mixed fractional digits, and zero trimming; derived by scale factors | Selected digits exercise both scales and leading fractional/padding behavior; halving adds no new path. |
+| AED 1.005 / 0.0001; BHD 1.0001 / −0.0001 | Nonzero excess precision (including a nonzero digit after excess zeros) | Halving is still invalid but loses the AED midpoint example or changes the selected precision probe. |
+| AED endpoints 92233720368547758.07 / −92233720368547758.08; BHD 9223372036854775.807 / −9223372036854775.808 | Exact signed bounds divided by the respective factors | Half no longer probes the bounds; appended zeros test exact representability without narrowing range. |
+| AED 92233720368547758.08 / −92233720368547758.09; BHD 9223372036854775.808 / −9223372036854775.809 | One minor unit beyond either endpoint | Adjacent boundary probes, not arbitrary amounts to halve. |
+| AED whole text 92233720368547759; BHD whole text 9223372036854776; 9223372036854775808 whole text | Scaling overflow and whole-part overflow | Derived from the endpoint's whole part plus one, or maximum integer plus one; half fits and misses overflow. |
+| `Max`, `Min`, `Max−1`, `Min+1`, −1, 0, +1 minor units | Checked add/subtract/negate boundary tables | Endpoints and adjacent units expose wrapping, including subtracting `Min` without negating it. Half does not hit these boundaries. |
+| Sums `[Max, +1, −1]`, `[Min, −1, +1]` | Intermediate overflow despite representable mathematical total | Minimum cancellation sequence; halving avoids overflow. |
+| Sums `[Max, −1, +1]`, `[Min, +1, −1]`, and `[Max, Min] → −1` | Safe ordered accumulation and cancellation | Boundary complements verify no false overflow; half changes endpoint/parity properties. |
+| Empty sum → 0 in the requested currency | Additive identity; no count limit | Zero terms cannot be halved. |
+| `USD`, empty currency | Unsupported identifier / missing Go zero-value currency | Identifiers have no half; neither implies a conversion or default currency. |
+| Empty text, sign-only text, `.1`, `1.`, `1.2.3`, `1e2`, `1,000.00`, `1_000`, whitespace, double/mixed signs, `NaN`, `Inf`, Unicode digits/minus | Lexical rejection fixtures for the documented ASCII fixed-point grammar | Syntax examples, not monetary magnitudes; halving is meaningless. |
+
+Every error-path assertion also checks that no partial money value is returned.
+Error identities, rather than message text, distinguish invalid input from derived
+overflow. No random seed, fuzz budget, numerical tolerance, or balance cap is chosen.
+
+### Development automation
+
+These are technical choices for the human's lightweight automation request, not
+ledger policy or changes to P01's baseline.
+
+| Value | Meaning, source or rationale | Why this value rather than half |
+| --- | --- | --- |
+| Staticcheck v0.8.2 (2026.2.2); govulncheck v1.9.0 | Verified releases from the official Go module proxy; pinned in Makefile for consistent local/CI analysis | Version identities cannot be halved; explicit pins avoid silently changing analyzers. |
+| Go 1.26 minimum for the pinned analyzers; CI `stable` | Analyzer module requirements; CI selects the latest stable Go to check its standard library as well as application code | Version labels cannot be halved. The module baseline remains 1.23.1, not a security guarantee for that old compiler. |
+| Go 1.27.3 for local automation verification | Observed stable release from Go's official download index; selected with `GOTOOLCHAIN=go1.27.3` for local `make ci` and `make check` | Version identity cannot be halved; this records the actual checked compiler, not a new module baseline. |
+| One Linux job, `ubuntu-latest` | Small CI footprint using a GitHub-hosted runner with race-detector support | Half a job is meaningless; an OS/version matrix adds work without a current platform-specific requirement. |
+| 10 minutes | CI job timeout, allowing cold compilation of both analyzers and race instrumentation while bounding stalled runs | Five minutes leaves less cold-cache margin; this is an operational ceiling, not a performance target. |
+| `23 6 * * 1` | Weekly vulnerability refresh, Monday 06:23 UTC, away from the top-of-hour schedule peak | Calendar fields are discrete; the exact offset has no business meaning. Halving the weekly interval doubles unattended work. |
+| Weekly Dependabot interval; schema version 2 | Low-volume updates to pinned GitHub Actions only | Half the interval adds update churn; schema version is an API identity, not a magnitude. |
+| checkout v7.0.1; setup-go v7.0.0; their release commit SHAs | Official action release identities, pinned in CI | Release labels/SHAs cannot be halved; hashes identify reviewed code. |
+| Test `-count=1` | Race/coverage run bypasses cached test results | A half execution is meaningless; a single fresh run gives the requested evidence without repetition. |
+| `coverage.out`; no coverage threshold | Go coverage profile for local inspection; excluded by the existing ignore rule | Artifact name is an identifier; no arbitrary percentage is selected to halve. |
+| Shell exit status 1 for formatting violations | Conventional unsuccessful Make target, also used by the formatter rejection probe | Status is discrete; halving is meaningless. |

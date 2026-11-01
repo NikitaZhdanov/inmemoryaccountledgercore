@@ -1,6 +1,7 @@
 # Minimal technical design
 
-Status: proposal for implementation; no ledger code or executable tests yet.
+Status: P01 money representation implemented with unit tests; the remaining
+ledger design is proposed for later implementation.
 The human selected Go. [SPEC.md](SPEC.md) defines business behavior;
 [TASK.md](TASK.md) remains the original assignment. This design selects technical
 mechanisms without changing agreed decisions, numerical oracles, or
@@ -9,9 +10,18 @@ mechanisms without changing agreed decisions, numerical oracles, or
 ## Language and tooling
 
 Use Go, a Go module, and the standard library only: `strconv` for integer parsing,
-`testing` for tests, and `fmt`/`strings` for the text report. Use
-`gofmt`, `go test`, and `go vet`; record the actual Go version and module baseline
-when implementation begins. No services, dependency framework, or storage setup.
+`testing` for tests, and `fmt`/`strings` for text. P01 uses module
+`inmemoryaccountledgercore`, baseline Go 1.23.1, observed toolchain
+`go1.23.1 darwin/amd64`, and `gofmt`, `go test`, and `go vet`.
+No services, dependency framework, or storage setup.
+
+The human's subsequent automation request adds a [Makefile](../Makefile) and
+GitHub Actions sharing formatting, build, vet, lint, test, and vulnerability
+commands. Standalone Staticcheck and govulncheck are pinned development tools,
+invoked outside application module dependencies. CI uses current stable Go;
+the core module baseline remains Go 1.23.1. See
+[A12](../AMBIGUITIES.md#a12--lightweight-development-checks) for tooling choices
+and README for exact commands and runtime/network requirements.
 
 Store money as `int64` minor units paired with currency, in a small value type.
 The human preferred this simpler representation over the initial `big.Int`

@@ -138,6 +138,27 @@ change representability. This is distinct from rounding calculated interest.
 Verify the [validation rules](docs/SPEC.md#monetary-validation-and-errors) against
 [input examples](NUMBERS.md#verification-parameters).
 
+P01 finalizes the technical decimal-text interface: an optional ASCII `+`/`-`,
+one or more integer digits, and an optional decimal point followed by one or more
+digits. Leading zeros and signed zero are accepted; formatting normalizes signs
+and leading zeros and always prints the currency scale. Alternatives included
+accepting separators, exponent notation, whitespace, or incomplete decimal forms;
+the simple fixed-point grammar avoids implicit normalization. This is an API
+choice, not a new event-validation business rule. Nonzero excess fractional digits
+reject; excess zeros are removed without rounding, even at the signed endpoints.
+Raw input text belongs to the later immutable input record (P03/P05), not `Money`.
+
+Money has private value fields and a validating constructor; its zero Go value
+has no currency and operations reject it. `Format` returns an error for invalid
+currency rather than silently assuming AED. Checked subtraction operates directly
+without negating its operand, so representable `minimum − minimum` succeeds.
+`Sum` accumulates in caller order from currency-specific zero, rejecting an
+overflowing intermediate even if later terms could cancel it. Parsing range and
+precision errors have distinct sentinel errors from derived arithmetic overflow,
+so later submission handling can distinguish rejections from technical failures.
+The adjacent [money tests](internal/domain/money_test.go) exercise these choices
+with literal expectations catalogued in [NUMBERS](NUMBERS.md#p01-money-verification).
+
 ## A10 — Duplicate IDs and errors
 
 Alternatives were an identical-payload retry protocol with conflict rejection,
@@ -161,3 +182,31 @@ establish a genuine design limitation. Selection is deferred until implementatio
 provides evidence of a real limitation. No candidate assertion, numerical expectation,
 or failing implementation is selected. The deliverable itself remains required
 under [verification and deferred work](docs/SPEC.md#verification-and-deferred-work).
+
+## A12 — Lightweight development checks
+
+The human requested a Makefile, standard Go GitHub Actions, static checks,
+linting, and vulnerability scanning with lightweight tools. The technical choice
+is Go's own formatting/build/vet/test tools plus standalone Staticcheck and
+govulncheck, rather than a multi-linter framework or service integration. Tool
+versions are pinned in the Makefile and invoked with `go run package@version`,
+keeping development-tool dependencies outside the application module. Network
+access is needed for tool downloads, module metadata lookups (even on some cached
+invocations), and vulnerability database queries.
+
+CI runs one Linux job on current stable Go, with race detection and coverage;
+normal tests remain available on the P01 baseline. An old compiler's standard
+library can have vulnerabilities even without application dependencies. Therefore
+security checks use the actual selected Go toolchain and never suppress its
+findings to make the older baseline appear secure. Full checks require a current
+Go installation (the pinned analyzers require at least Go 1.26). The module's
+minimum language/runtime baseline remains Go 1.23.1. Coverage is reported without
+inventing a threshold. CI does not enable the deferred `designlimitation` tag.
+
+The workflow reuses `make ci` on pushes, pull requests, manual dispatch, and a
+weekly schedule so new vulnerability records can be checked without code changes.
+Actions are pinned to release commit SHAs with read-only repository permissions;
+weekly Dependabot updates maintain those action pins. Analyzer versions remain
+explicit Makefile pins to review when upgrading. Verification includes executing
+the Make targets and checking formatting rejection, workflow syntax, and source
+fidelity; hosted CI results can only be observed after a push.
