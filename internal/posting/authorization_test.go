@@ -15,14 +15,16 @@ import (
 func authorizationHistory(t *testing.T) (domain.History, domain.InputEvent) {
 	t.Helper()
 	currency := canonicalCurrencies(t)[0]
-	return domain.History{Records: []domain.Record{{
-			Key: "account/ACC-001", Account: &domain.Account{
-				ID: "ACC-001", Currency: currency, OpeningBalance: money(t, currency, 25000),
-			},
-		}}}, domain.InputEvent{
-			ID: "authorization", Kind: domain.InputAuthorization, AccountID: "ACC-001", Currency: currency,
-			AuthorizationID: "Auth-A", BookingDay: 2, ValueDay: 2, RawAmount: "200.00",
-		}
+	history := domain.History{Records: []domain.Record{{
+		Key: "account/ACC-001", Account: &domain.Account{
+			ID: "ACC-001", Currency: currency, OpeningBalance: money(t, currency, 25000),
+		},
+	}}}
+	input := domain.InputEvent{
+		ID: "authorization", Kind: domain.InputAuthorization, AccountID: "ACC-001", Currency: currency,
+		AuthorizationID: "Auth-A", BookingDay: 2, ValueDay: 2, RawAmount: "200.00",
+	}
+	return history, input
 }
 
 func approvedHold(t *testing.T, input domain.InputEvent) domain.Record {

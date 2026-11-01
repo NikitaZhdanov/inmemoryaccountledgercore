@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := check
 
 GO ?= go
-GOFMT ?= gofmt
+GOFMT ?= "$(shell $(GO) env GOROOT)/bin/gofmt"
 STATICCHECK_VERSION := v0.8.2
 GOVULNCHECK_VERSION := v1.9.0
 
