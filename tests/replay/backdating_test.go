@@ -14,9 +14,9 @@ import (
 	"inmemoryaccountledgercore/internal/repository/memory"
 )
 
-// P09 stops before capitalization. Literal TASK inputs and NUMBERS checkpoint
-// oracles exercise submission-triggered corrections with real components.
-func TestBackdatedSubmissionsReconcileBeforeNextInput(t *testing.T) {
+// Literal TASK inputs and NUMBERS checkpoint oracles exercise P09 historical
+// corrections followed by P10 finalization with real components.
+func TestBackdatedSubmissionsReconcileBeforeNextInputAndFinalize(t *testing.T) {
 	aed, err := domain.NewCurrency("AED", 2)
 	require.NoError(t, err)
 	bhd, err := domain.NewCurrency("BHD", 3)
@@ -178,6 +178,56 @@ func TestBackdatedSubmissionsReconcileBeforeNextInput(t *testing.T) {
 		assert.Equal(t, posting.DiagnosticDuplicateID, diagnostic.Diagnostic.Code)
 	}
 	assert.Equal(t, allFees, replayFeeRecords(repository.History()))
+	beforeFinalization := repository.History()
+	for _, id := range []domain.AccountID{"ACC-001", "ACC-002"} {
+		require.NoError(t, core.FinalizeDay(id, 6, 6, "window-end"))
+	}
+	final := repository.History()
+	assert.Equal(t, beforeFinalization.Records, final.Records[:len(beforeFinalization.Records)])
+	assert.Equal(t, allFees, replayFeeRecords(final))
+	state = replayProjection(t, final)
+	for _, tc := range []struct {
+		id                 domain.AccountID
+		balances, accruals []int64
+		capitalization     int64
+	}{
+		{"ACC-001", []int64{25000, 25000, 65000, 46500, 46500, 46603}, []int64{10, 10, 26, 19, 19, 19}, 103},
+		{"ACC-002", []int64{0, 0, 0, 0, 10000, 10008}, []int64{0, 0, 0, 0, 4, 4}, 8},
+	} {
+		var independentSum int64
+		for i, want := range tc.accruals {
+			independentSum += want
+			day := domain.Day(i + 1)
+			accrual, exists := state.Accrual(tc.id, day)
+			require.True(t, exists)
+			assert.Equal(t, want, accrual.MinorUnits(), "%s Day %d accrual", tc.id, day)
+			balance, err := state.Balance(tc.id, day, projection.BalanceOptions{})
+			require.NoError(t, err)
+			assert.Equal(t, tc.balances[i], balance.MinorUnits(), "%s Day %d close", tc.id, day)
+		}
+		assert.Equal(t, tc.capitalization, independentSum)
+		var capitalizations []domain.Record
+		for _, record := range final.Records {
+			if entry := record.Entry; entry != nil && entry.AccountID == tc.id && entry.Kind == domain.EntryCapitalization {
+				capitalizations = append(capitalizations, record)
+			}
+		}
+		require.Len(t, capitalizations, 1)
+		entry := capitalizations[0].Entry
+		assert.Equal(t, tc.capitalization, entry.Amount.MinorUnits())
+		assert.Equal(t, independentSum, entry.Amount.MinorUnits())
+		assert.Equal(t, domain.Day(6), entry.BookingDay)
+		assert.Equal(t, domain.Day(6), entry.ValueDay)
+		unpaid, err := state.UnpaidAccruals(tc.id)
+		require.NoError(t, err)
+		assert.Empty(t, unpaid)
+		require.NoError(t, core.FinalizeDay(tc.id, 6, 7, "repeat-finalization"))
+		require.NoError(t, core.ReconcileClosedDays(tc.id, 1, 7, "repeat-reconciliation"))
+	}
+	assert.Equal(t, final, repository.History())
+	finalAuthB, exists := state.Authorization("ACC-001", "Auth-B")
+	require.True(t, exists)
+	assert.Equal(t, decline, finalAuthB)
 }
 
 func replayProjection(t *testing.T, history domain.History) *projection.Projection {
