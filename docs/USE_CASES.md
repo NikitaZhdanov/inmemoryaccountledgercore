@@ -179,7 +179,7 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
   effects; continuation remains possible. Scaling/parsing never wraps or clamps.
 - **Preserved invariants:** Exact representability and covered rejection handling;
   [monetary validation and errors](SPEC.md#monetary-validation-and-errors),
-  technical bounds in [DESIGN](DESIGN.md#language-and-tooling).
+  technical bounds in [DESIGN](DESIGN.md#money-representation).
 
 ### U07 — Surface a derived arithmetic failure
 
@@ -236,7 +236,7 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
   including the minimum without unsafe negation.
 - **Preserved invariants:** Principal value and source fidelity;
   [monetary validation and errors](SPEC.md#monetary-validation-and-errors),
-  endpoint mechanism in [DESIGN](DESIGN.md#language-and-tooling).
+  endpoint mechanism in [DESIGN](DESIGN.md#money-representation).
 
 ### X05 — Fee cannot sustain its own eligibility
 
@@ -305,7 +305,7 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
   Exact expectations derive independently from [NUMBERS](../NUMBERS.md#int64-representation).
 - **Preserved invariants:** Exact money/rate calculations per
   [monetary validation and errors](SPEC.md#monetary-validation-and-errors);
-  representation checks per [DESIGN](DESIGN.md#language-and-tooling).
+  representation checks per [DESIGN](DESIGN.md#money-representation).
 
 ### X11 — Protect stored history and atomic repository batches
 
@@ -369,8 +369,7 @@ remain outside scope. The design remains sequential and in memory.
 ## Design-test candidates
 
 The [assignment](TASK.md#deliverable-1--repository) requires a real failing test
-against the chosen design. [SPEC](SPEC.md#verification-and-deferred-work),
-[DESIGN](DESIGN.md#verification-and-implementation-handoff), and
+against the chosen design. [SPEC](SPEC.md#verification-and-deferred-work) and
 [A11](../AMBIGUITIES.md#a11--required-failing-test) defer its selection until
 implementation provides evidence. The scenarios above should pass their eventual
 regression assertions, including U07's expected technical failure. A regression

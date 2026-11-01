@@ -21,8 +21,8 @@ for the boundary exercised by future tests.
 
 Go is the selected language. Use `int64` minor units instead of the initial
 `math/big.Int` proposal to reduce representation and ownership complexity.
-The [revised proposal](docs/DESIGN.md#language-and-tooling) uses standard-library
-tooling and value-type money with checked arithmetic. The technical resolution
+The [money representation](docs/DESIGN.md#money-representation) uses value-type
+money with checked arithmetic. The technical resolution
 is to reject unrepresentable input and surface derived overflow as a technical
 failure, never silently wrap it or treat it as a business decline. This adds an
 explicit representation limit without changing the supplied scenario's results;
@@ -30,14 +30,14 @@ see [bounds and verification](NUMBERS.md#int64-representation). Planned
 defensive-copy tests cover stored history's slices/maps.
 The [repository proposal](docs/DESIGN.md#repository-boundary) keeps the small
 read/append boundary; record types and exact signatures remain implementation
-work. P01's money API and toolchain baseline are recorded in
-[DESIGN](docs/DESIGN.md#language-and-tooling).
+work. P01's money API is in the [domain code](internal/domain/money.go); the
+toolchain baseline is in [DEVELOPMENT](docs/DEVELOPMENT.md#requirements).
 
 Use separate `internal/domain`, `internal/ledger`,
 `internal/repository/memory`, `internal/report`, and `internal/scenario` packages
 with wiring in `cmd/replay/main.go`, replacing the root-package layout proposal.
 The separation makes ownership and import direction explicit while preserving
-the small repository boundary. The [package/import map](docs/DESIGN.md#small-code-layout)
+the small repository boundary. The [package/import map](docs/DESIGN.md#packages-and-dependencies)
 keeps shared types below ledger and storage to avoid cycles. Unit tests stay
 beside each package; end-to-end composition tests live separately in
 `tests/replay`. Verify import direction and test placement during implementation;

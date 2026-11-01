@@ -18,6 +18,11 @@
 
 ## Documentation maintenance
 
+Give each document a clear purpose and ownership of its content; other documents
+reference that owner instead of repeating it. Keep DESIGN focused on architecture.
+Use standalone wording and avoid conversational phrasing or repetitive assurances.
+Update documentation proportionally to the change, including affected references.
+
 Update owning records alongside code and tests, as work happens:
 
 - [WORKLOG.md](WORKLOG.md): keep short entries for meaningful completed changes,
@@ -42,11 +47,11 @@ Update owning records alongside code and tests, as work happens:
   main Make targets, and grouped documentation links. Keep detailed tooling, CI,
   compatibility, troubleshooting, output interpretation, and the isolated failing
   test command in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md); keep API details in
-  design/code documentation. Omit milestone narratives and commands for features
+  code documentation. Omit milestone narratives and commands for features
   that do not exist.
-- Keep product behavior in SPEC, architecture/API details in DESIGN, decisions
-  in AMBIGUITIES, and task status in IMPLEMENTATION_PLAN. Create records when
-  their first relevant decision is made and keep them consistent in the same
+- Keep product behavior in SPEC, architecture in DESIGN, API details in code,
+  decisions in AMBIGUITIES, and task status in IMPLEMENTATION_PLAN. Create records
+  when their first relevant decision is made and keep them consistent in the same
   change.
 - Update AGENTS.md only for durable changes to how contributors work. Keep
   product behavior, design decisions, configuration values, history, and progress
@@ -77,7 +82,7 @@ Update owning records alongside code and tests, as work happens:
 - For documentation-only changes, verify local links/anchors, source fidelity,
   consistency, and diffs. Verify that README quick-start commands and listed
   Make targets exist and match their descriptions.
-- Follow the [failing-test requirements](docs/DESIGN.md#verification-and-implementation-handoff)
+- Follow the [failing-test requirements](docs/SPEC.md#verification-and-deferred-work)
   and [isolated command guidance](docs/DEVELOPMENT.md#planned-replay-and-isolated-failing-test).
   Preserve the annotated failing assertion; run it separately from the normal
   suite and record its observed nonzero result.
