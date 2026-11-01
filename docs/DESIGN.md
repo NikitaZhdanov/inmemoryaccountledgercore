@@ -2,7 +2,7 @@
 
 Status: P01 money representation implemented with unit tests; the remaining
 ledger design is proposed for later implementation.
-The human selected Go. [SPEC.md](SPEC.md) defines business behavior;
+[SPEC.md](SPEC.md) defines business behavior;
 [TASK.md](TASK.md) remains the original assignment. This design selects technical
 mechanisms without changing agreed decisions, numerical oracles, or
 [criterion verdicts](../REJECTED.md).
@@ -11,23 +11,23 @@ mechanisms without changing agreed decisions, numerical oracles, or
 
 Use Go, a Go module, and the standard library for production: `strconv` for integer
 parsing and `fmt`/`strings` for text. Unit tests use Go's `testing` runner with
-Testify `assert`/`require`, as subsequently requested by the human; see
+Testify `assert`/`require` as the assertion-library convention; see
 [A13](../AMBIGUITIES.md#a13--testify-unit-test-assertions). P01 uses module
 `inmemoryaccountledgercore`, baseline Go 1.23.1, observed toolchain
 `go1.23.1 darwin/amd64`, and `gofmt`, `go test`, and `go vet`.
 No services, dependency framework, or storage setup.
 
-The human's subsequent automation request adds a [Makefile](../Makefile) and
-GitHub Actions sharing formatting, build, vet, lint, test, and vulnerability
-commands. Standalone Staticcheck and govulncheck are pinned development tools,
-invoked outside application module dependencies. CI uses current stable Go;
+A [Makefile](../Makefile) and GitHub Actions share formatting, build, vet, lint,
+test, and vulnerability commands. Standalone Staticcheck and govulncheck are
+pinned development tools, invoked outside application module dependencies.
+CI uses current stable Go;
 the core module baseline remains Go 1.23.1. See
 [A12](../AMBIGUITIES.md#a12--lightweight-development-checks) for tooling choices
 and README for exact commands and runtime/network requirements.
 
 Store money as `int64` minor units paired with currency, in a small value type.
-The human preferred this simpler representation over the initial `big.Int`
-proposal. Its range comfortably covers this workload and copying money needs no
+This replaces the initial `big.Int` proposal with simpler value semantics.
+Its range comfortably covers this workload and copying money needs no
 reference ownership rules. Cross-currency arithmetic is invalid; there is no
 conversion facility.
 
@@ -51,7 +51,7 @@ tolerance, or intermediate floating point is needed.
 
 ## Small code layout
 
-The human selected separate internal packages with composition in `main`.
+Separate internal packages define ownership, with composition in `main`.
 The table lists allowed production imports within this module; standard-library
 imports are omitted.
 
@@ -148,8 +148,8 @@ days chronologically. For each account/day, sum known value-dated entries,
 exclude that day's own net fee from eligibility, compare required charge with
 recorded net fee, and append any linked difference. Earlier days' corrections
 carry forward. Negative BHD eligibility produces the agreed missing-policy
-diagnostic and no fee, not a guessed tariff. Identify these diagnostics by
-account/day/cause so unchanged repeated reconciliation adds nothing.
+diagnostic without a fee because the tariff is unspecified. Identify these
+diagnostics by account/day/cause so unchanged repeated reconciliation adds nothing.
 
 Then replace that day's unpaid accrual using its post-fee positive balance.
 Unpaid interest is not a monetary entry and affects neither ledger nor holds.
@@ -177,7 +177,7 @@ value day through the row's day; show fee charges/refunds grouped by assessed
 day, including source links and
 booking/value days. Reconstruct recorded authorization lifecycle through each
 row's booking day. Place errors and decision reasons on their original observation
-day, without inventing later occurrences. Format at the account currency's scale.
+day. Format at the account currency's scale.
 
 This deliberately combines restated financial balances with recorded decisions;
 label that distinction. Print only the agreed final table. Prefix observations,
@@ -209,9 +209,10 @@ Planned commands once built: `go run ./cmd/replay`, `go test ./...`, and
 end-to-end tests run with `go test ./tests/replay`. Run the genuine failing test
 separately with `go test -tags designlimitation ./...`.
 The tagged test must expose an evidenced limitation of the implemented design,
-include its inline explanation, and genuinely fail. Its assertion remains deferred
-under [A11](../AMBIGUITIES.md#a11--required-failing-test); do not manufacture an
-incorrect expected balance or mark it as an expected failure.
+include its inline explanation, and exit nonzero under the isolated command.
+Its assertion remains deferred under [A11](../AMBIGUITIES.md#a11--required-failing-test).
+Use expectations justified by the property under test; expected-failure wrappers
+would prevent the required nonzero result.
 
 At implementation time, publish exact setup/run/output instructions in README,
 inventory any additional constants/test parameters, and log actual check results.

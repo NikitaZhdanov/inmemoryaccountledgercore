@@ -2,38 +2,38 @@
 
 Supplied-replay decisions are resolved. Behavioral rules live in
 [docs/SPEC.md](docs/SPEC.md); numerical evidence and verification examples live
-in [NUMBERS.md](NUMBERS.md). Each entry records alternatives, the human's choice,
+in [NUMBERS.md](NUMBERS.md). Each entry records alternatives, the resolution,
 its reason, and the relevant observable checks without restating the rules.
 
 ## A1 — Replay order and projections
 
 Alternatives were booking-date sorting, value-date sorting, or supplied order.
-The human chose supplied order and rebuildable derived balances, retaining
+Use supplied order and rebuildable derived balances, retaining
 immutable history. This respects the provided sequence while permitting historical
 correction. Verify order/record preservation under [history and replay](docs/SPEC.md#history-and-replay).
 
 ## A2 — Storage boundary
 
 Alternatives were combined storage/business logic, a small repository, or general
-infrastructure. The human chose the small repository with an in-memory implementation
+infrastructure. Use a small repository with an in-memory implementation
 to keep this workload simple. See [scope and storage](docs/SPEC.md#scope-and-storage)
 for the boundary exercised by future tests.
 
-For the technical design, the human selected Go and then preferred `int64` minor
-units over the initial `math/big.Int` proposal to avoid unnecessary complexity.
+Go is the selected language. Use `int64` minor units instead of the initial
+`math/big.Int` proposal to reduce representation and ownership complexity.
 The [revised proposal](docs/DESIGN.md#language-and-tooling) uses standard-library
 tooling and value-type money with checked arithmetic. The technical resolution
 is to reject unrepresentable input and surface derived overflow as a technical
 failure, never silently wrap it or treat it as a business decline. This adds an
 explicit representation limit without changing the supplied scenario's results;
-see [bounds and verification](NUMBERS.md#int64-representation). Defensive-copy
-tests still protect stored history's slices/maps.
+see [bounds and verification](NUMBERS.md#int64-representation). Planned
+defensive-copy tests cover stored history's slices/maps.
 The [repository proposal](docs/DESIGN.md#repository-boundary) keeps the small
-read/append boundary; exact API spelling and the actual toolchain baseline can
-be finalized during implementation. These are technical choices, not new business
-interpretations or claims of human approval of the entire proposal.
+read/append boundary; record types and exact signatures remain implementation
+work. P01's money API and toolchain baseline are recorded in
+[DESIGN](docs/DESIGN.md#language-and-tooling).
 
-The human subsequently chose separate `internal/domain`, `internal/ledger`,
+Use separate `internal/domain`, `internal/ledger`,
 `internal/repository/memory`, `internal/report`, and `internal/scenario` packages
 with wiring in `cmd/replay/main.go`, replacing the root-package layout proposal.
 The separation makes ownership and import direction explicit while preserving
@@ -45,10 +45,9 @@ this is a structural decision, with no change to business behavior.
 
 ## A3 — Unmatched settlement
 
-Criterion 4 already supplies a consistent rule. The earlier proposal to accept
-E6 as an unmatched external payment was unsupported and withdrawn after human
-correction: the brief provides no force-post indicator. This was a specification
-error, not a legitimate missing-policy choice. The human confirmed rejection.
+Reject E6 under criterion 4: Auth-Z has no authorization, and the brief provides
+no force-post indicator. This corrects the earlier specification proposal to
+accept an unmatched external payment.
 Observe retained input/error, no debit, and continuation under
 [authorizations and settlements](docs/SPEC.md#authorizations-and-settlements).
 
@@ -56,13 +55,13 @@ Observe retained input/error, no debit, and continuation under
 
 Alternatives were deferred versus immediate closed-day reconciliation, retaining
 fees versus refunding them, and reversing principal alone versus all affected
-financial effects. The human chose immediate correction of closed history and
+financial effects. Use immediate correction of closed history and
 financial restoration by appended corrections, preserving original records.
 This lets subsequent inputs see corrected history without assessing the open day
-early. The human confirmed refund booking follows the correction-causing event.
+early. Refund booking follows the correction-causing event.
 
-Criterion 6 was explicitly accepted as financial restoration, not a replay-state
-rollback. Dates, links, chronology, and identity rules are specified in
+Interpret criterion 6 as financial restoration while retaining replay state.
+Dates, links, chronology, and identity rules are specified in
 [history and replay](docs/SPEC.md#history-and-replay), [fees](docs/SPEC.md#fees),
 and [financial restoration](docs/SPEC.md#interest-and-financial-restoration).
 Use the [checkpoint calculations](NUMBERS.md#checkpoint-calculations) to verify
@@ -71,28 +70,29 @@ restoration and repeated reconciliation without extra effects.
 ## A5 — Fee bases and missing BHD tariff
 
 Eligibility alternatives included testing before a day's own fee or letting its
-existing charge influence eligibility. The human chose the pre-own-fee test
+existing charge influence eligibility. Use the pre-own-fee test
 with earlier net fees carried forward, specifically to prevent a fee sustaining
 itself after the underlying overdraft is corrected. See [fees](docs/SPEC.md#fees)
 and the associated chronological oracle in NUMBERS.md.
 
 The brief does not supply a BHD tariff or conversion rule. Alternatives were an
-undefined-policy error or a newly supplied currency-specific tariff. The human
-chose the error/no-charge fallback to preserve source fidelity and processing
+undefined-policy error or a newly supplied currency-specific tariff. Use the
+error/no-charge fallback to preserve source fidelity and processing
 continuation. The tariff itself remains unspecified, not zero. Verify balance
 preservation, absence of conversion/charge, and continuation under the
 [missing-policy rule](docs/SPEC.md#missing-bhd-fee-policy).
 
 ## A6 — Interest rounding, representation, and finalization
 
-The human selected HALF_EVEN over HALF_UP after the tie-bias trade-off, and
-rebuildable daily state over immutable accrual/adjustment records for simplicity.
+Use HALF_EVEN rather than HALF_UP to reduce midpoint tie bias, and use
+rebuildable daily state rather than immutable accrual/adjustment records for
+simplicity.
 These choices preserve monetary history without additional daily ledger entries.
 Rounding examples and reconciliation evidence are in
 [NUMBERS.md](NUMBERS.md#verification-parameters).
 
-The human refined the initially proposed generic closing sequence: capitalization
-belongs in Day 6 fee eligibility because the brief refers to closing ledger
+The closing sequence includes capitalization in Day 6 fee eligibility because
+the brief refers to closing ledger
 balance, but not in its own interest base. Finalization waits for the full stream
 so the late credit is included. The [finalization rules](docs/SPEC.md#day-6-finalization)
 and [boundary cases](NUMBERS.md#day-6-boundaries) verify this distinction and one
@@ -101,13 +101,13 @@ capitalized credit on repeat finalization.
 ## A7 — Hold lifecycle
 
 E5 could have been interpreted as final settlement or a partial capture leaving
-a residual hold. The human chose final settlement because the task provides no
+a residual hold. Use final settlement because the task provides no
 partial-settlement indicator or further captures. Releasing unused reservation
 is not a monetary credit. See [authorizations and settlements](docs/SPEC.md#authorizations-and-settlements)
 and [checkpoint calculations](NUMBERS.md#checkpoint-calculations).
 
-Past decisions remain fixed during rebuilding; the human explicitly confirmed
-Auth-B's original decline survives reversal. Being unsettled does not imply
+Past decisions remain fixed during rebuilding, including
+Auth-B's original decline after reversal. Being unsettled does not imply
 approval. Differing authorization dates, explicit partial/over-captures, expiry,
 cancellation, and inactive-ID settlements remain unspecified outside the supplied
 scenario; no broader policy is inferred. Verify approval/release boundaries and
@@ -115,24 +115,24 @@ recorded outcomes rather than adding those features.
 
 ## A8 — Observations and report interpretation
 
-The human chose a final restated table over original snapshots plus a restated
-table, favoring compact output while preserving correction records and original
+Use a final restated table instead of original snapshots plus a restated
+table to keep output compact while preserving correction records and original
 decisions. The close checkpoints and row placement are routine consequences of
 the agreed sequence, not new financial policies. See
 [reporting and observations](docs/SPEC.md#reporting-and-observations).
 
 For criterion 1, alternatives were a fee-free prefix calculation or a literal
-posted snapshot. The human chose the former to give the qualification precise
-meaning without denying actual fees. The original criterion remains unchanged.
+posted snapshot. Use the fee-free calculation to give the qualification precise
+meaning while retaining actual fee records. The original criterion remains unchanged.
 Verify all distinct observations in [checkpoint calculations](NUMBERS.md#checkpoint-calculations).
 
 ## A9 — Currency precision and instalments
 
-The human chose the last rather than first instalment for residual allocation,
-using final-instalment balancing among conserving alternatives. See
+Assign the residual to the last instalment, using final-instalment balancing
+among conserving alternatives. See
 [instalments](docs/SPEC.md#instalments) and [conservation](NUMBERS.md#instalment-conservation).
 
-For input precision, the human chose rejection over ingress rounding to preserve
+For input precision, reject excess nonzero digits instead of rounding to preserve
 submitted monetary meaning. Trailing zeros are acceptable because they do not
 change representability. This is distinct from rounding calculated interest.
 Verify the [validation rules](docs/SPEC.md#monetary-validation-and-errors) against
@@ -162,7 +162,7 @@ with literal expectations catalogued in [NUMBERS](NUMBERS.md#p01-money-verificat
 ## A10 — Duplicate IDs and errors
 
 Alternatives were an identical-payload retry protocol with conflict rejection,
-or rejecting all repeated IDs. The human chose rejection as a deliberate simplicity
+or rejecting all repeated IDs. Reject all repeated IDs as a simplicity
 trade-off: small, predictable implementation; retry support is outside the
 assignment. Internal reconciliation idempotence is a separate property. The
 [validation/error rules](docs/SPEC.md#monetary-validation-and-errors) define the
@@ -176,20 +176,18 @@ the selected policy.
 
 ## A11 — Required failing test
 
-The predetermined aggregate-rounding test proposal was withdrawn at the human's
-request because an artificial assertion contradicting agreed output does not
-establish a genuine design limitation. Selection is deferred until implementation
-provides evidence of a real limitation. No candidate assertion, numerical expectation,
-or failing implementation is selected. The deliverable itself remains required
+The aggregate-rounding test proposal was withdrawn because its expected result
+contradicted the specified output. Select the required failing test from an
+evidenced limitation of the implementation. Test selection and its numerical
+expectation remain unresolved; the deliverable remains required
 under [verification and deferred work](docs/SPEC.md#verification-and-deferred-work).
 
 ## A12 — Lightweight development checks
 
-The human requested a Makefile, standard Go GitHub Actions, static checks,
-linting, and vulnerability scanning with lightweight tools. The technical choice
-is Go's own formatting/build/vet/test tools plus standalone Staticcheck and
-govulncheck, rather than a multi-linter framework or service integration. Tool
-versions are pinned in the Makefile and invoked with `go run package@version`,
+Use a Makefile and standard Go GitHub Actions for lightweight development checks:
+Go's formatting/build/vet/test tools plus standalone Staticcheck and govulncheck.
+These keep the toolset smaller than a multi-linter framework or service integration.
+Tool versions are pinned in the Makefile and invoked with `go run package@version`,
 keeping development-tool dependencies outside the application module. Network
 access is needed for tool downloads, module metadata lookups (even on some cached
 invocations), and vulnerability database queries.
@@ -197,11 +195,11 @@ invocations), and vulnerability database queries.
 CI runs one Linux job on current stable Go, with race detection and coverage;
 normal tests remain available on the P01 baseline. An old compiler's standard
 library can have vulnerabilities even without application dependencies. Therefore
-security checks use the actual selected Go toolchain and never suppress its
-findings to make the older baseline appear secure. Full checks require a current
-Go installation (the pinned analyzers require at least Go 1.26). The module's
-minimum language/runtime baseline remains Go 1.23.1. Coverage is reported without
-inventing a threshold. CI does not enable the deferred `designlimitation` tag.
+security checks use the selected Go toolchain and report its findings.
+Full checks require a current Go installation (the pinned analyzers require at
+least Go 1.26). The module's minimum language/runtime baseline remains Go 1.23.1.
+Coverage is reported; no minimum percentage is enforced. CI does not enable the
+deferred `designlimitation` tag.
 
 The workflow reuses `make ci` on pushes, pull requests, manual dispatch, and a
 weekly schedule so new vulnerability records can be checked without code changes.
@@ -213,8 +211,8 @@ fidelity; hosted CI results can only be observed after a push.
 
 ## A13 — Testify unit-test assertions
 
-The human explicitly requested Testify for unit tests, superseding the earlier
-standard-library-only test choice. Keep Go's `testing` runner and existing
+Testify is the project's unit-test assertion library, replacing the earlier
+standard-library-only test convention. Keep Go's `testing` runner and existing
 table-driven cases, use `require` for prerequisites and expected error identities,
 and `assert` for independent result checks. Equality stays exact and type-sensitive;
 no approximate assertions or expected values change. Raw sentinel comparisons
@@ -222,9 +220,8 @@ become Testify's `ErrorIs`/`NotErrorIs` checks so wrapped-error behavior is reta
 
 Testify is a pinned test-only module dependency; production code remains standard
 library only. Record its resolved transitive dependencies in NUMBERS and go.sum,
-and include go.sum in the CI dependency cache key. This is a requested assertion
-library change, not new ledger behavior, test scenarios, or a replacement test
-runner. Verify normal tests on the Go 1.23.1 baseline and full checks on the
-automation toolchain, preserving all existing literal oracles and coverage.
+and include go.sum in the CI dependency cache key. Verify normal tests on the
+Go 1.23.1 baseline and full checks on the automation toolchain, preserving all
+existing literal oracles and coverage.
 The existing vulnerability target now includes test files with `-test`, so the
 new test-only dependency is part of the scan.

@@ -137,8 +137,8 @@ func TestParseMoneySyntaxErrors(t *testing.T) {
 	}
 }
 
-// Construct directly from independently tabulated minor units: a parser and
-// formatter with matching mistakes must not be able to validate each other.
+// Construct money from tabulated minor units to verify formatting independently
+// of parsing.
 func TestMoneyFormat(t *testing.T) {
 	for _, tc := range []struct {
 		currency domain.Currency

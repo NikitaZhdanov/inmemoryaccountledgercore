@@ -6,7 +6,7 @@ explains business choices. The [Go design](docs/DESIGN.md#language-and-tooling)
 uses checked `int64` minor units with the representation bounds below.
 P01 uses Go module `inmemoryaccountledgercore`, baseline Go 1.23.1, observed
 toolchain `go1.23.1 darwin/amd64`, and standard-library-only production code.
-Unit tests now use Testify at the human's request. The module path
+Unit tests use Testify. The module path
 is a local import identity, not a network location; the runtime baseline matches
 the available toolchain rather than speculating about an untested older version.
 Version labels and platform names cannot meaningfully be halved.
@@ -28,12 +28,13 @@ Calculations and verification use exact equality, without numerical tolerance.
 | 100 = 10^2; 1,000 = 10^3 | Derived AED/BHD minor-unit factors | Half changes the unit and invalidates representability checking. |
 | Zero | TASK.md inclusive authorization boundary and nonpositive-interest threshold | Zero is its own half. |
 | Three instalments | TASK.md E10 count | A fractional count is meaningless; changing the count alters the event. |
-| HALF_EVEN | Human-selected daily rounding convention; [A6](AMBIGUITIES.md#a6--interest-rounding-representation-and-finalization) | Discrete mode; no meaningful half. Exact midpoint is half a minor unit by definition. |
+| HALF_EVEN | Selected daily rounding convention; [A6](AMBIGUITIES.md#a6--interest-rounding-representation-and-finalization) | Discrete mode; no meaningful half. Exact midpoint is half a minor unit by definition. |
 
 ### int64 representation
 
-This is a technical choice following the human's preference, not a task-mandated
-business limit. Signed 64-bit minor units range from −2^63 to 2^63 − 1 inclusive
+This representation provides value semantics with checked arithmetic; it is a
+technical choice rather than a task-mandated business limit. Signed 64-bit minor
+units range from −2^63 to 2^63 − 1 inclusive
 (−9,223,372,036,854,775,808 through 9,223,372,036,854,775,807 minor units).
 The width and endpoints follow Go's `int64` type; the exponent accounts for the
 sign bit. Halving the width to 32 bits unnecessarily reduces headroom; halving
@@ -73,8 +74,8 @@ inverse amount is derived from E7 rather than independently selected.
 
 All results below are independently derived expectations, not adjustable inputs
 or executed ledger tests. Halving a derived result would contradict its formula,
-the supplied events, or the selected precision. Human choices determine behavior
-rather than arbitrary expected balances.
+the supplied events, or the selected precision. Results follow the behavior in
+SPEC and the decisions in AMBIGUITIES.
 
 ## Checkpoint calculations
 
@@ -192,10 +193,10 @@ a base removes its exact tie. Results derive from the daily-rate formula.
 | BHD 1.0000 | Accept as equal value BHD 1.000 |
 | BHD 1.0001 | Reject |
 
-The first input is the human's example; half is also representable but not the
-supplied example. The rejected AED midpoint shows why input validation must not
-use interest rounding; half would no longer demonstrate that midpoint. The BHD
-pair isolates a zero/nonzero fourth digit; halving adds no useful coverage.
+The first input is the selected trailing-zero example; half is also representable
+but is a different fixture. The rejected AED midpoint shows why input validation
+must not use interest rounding; half would no longer demonstrate that midpoint.
+The BHD pair isolates a zero/nonzero fourth digit; halving adds no useful coverage.
 
 Duplicate verification uses two submissions, the minimum to trigger duplication;
 half gives one and never exercises rejection. Cover identical/changed payloads,
@@ -214,7 +215,7 @@ point each occupy one ASCII character; these are syntax lengths, not tunable lim
 | Fixtures / constants | Meaning, source or derivation | Why these rather than half |
 | --- | --- | --- |
 | AED 0 / −0.000 → 0 minor units → 0.00; BHD +0.0000 → 0 → 0.000 | Zero/sign normalization and redundant-zero handling | Zero is its own half; syntax variants probe normalization. |
-| AED 1 / 1.0 / 1.00 / 1.000 → 100; BHD 1 / 1.0 / 1.00 / 1.000 / 1.0000 → 1,000 | Same principal at different input precisions; human's trailing-zero examples | Halving adds no new representability or padding case. |
+| AED 1 / 1.0 / 1.00 / 1.000 → 100; BHD 1 / 1.0 / 1.00 / 1.000 / 1.0000 → 1,000 | Same principal at different input precisions; trailing-zero validation examples | Halving adds no new representability or padding case. |
 | AED 1.2 → 120; BHD 1.2 → 1,200 and 1.23 → 1,230 | Nonzero shorter fractions padded on the right to the currency scale | These distinguish padding direction; halving adds no new path. |
 | AED 0.01 → 1; BHD 0.001 → 1; corresponding negatives | Smallest supported currency units | Half is unrepresentable. |
 | AED +0012.30 → 1,230; −12.30 → −1,230; BHD 12.345 → 12,345; −00012.345000 → −12,345 | Fixed-point leading zeros, sign, mixed fractional digits, and zero trimming; derived by scale factors | Selected digits exercise both scales and leading fractional/padding behavior; halving adds no new path. |
@@ -235,8 +236,8 @@ overflow. No random seed, fuzz budget, numerical tolerance, or balance cap is ch
 
 ### Development automation
 
-These are technical choices for the human's lightweight automation request, not
-ledger policy or changes to P01's baseline.
+These technical choices keep development automation lightweight and retain
+P01's module baseline.
 
 | Value | Meaning, source or rationale | Why this value rather than half |
 | --- | --- | --- |
@@ -256,7 +257,7 @@ ledger policy or changes to P01's baseline.
 
 | Value | Meaning, source or rationale | Why this value rather than half |
 | --- | --- | --- |
-| Testify v1.12.1 | Human-requested unit-test assertion library; published release, pinned in go.mod with checksums in go.sum | Version identity cannot be halved; a stable release supplies the requested assertions without changing monetary expectations. |
+| Testify v1.12.1 | Selected unit-test assertion library; published release, pinned in go.mod with checksums in go.sum | Version identity cannot be halved; a stable release supplies the selected assertions without changing monetary expectations. |
 | go.yaml.in/yaml/v3 v3.0.5 | Testify's resolved indirect dependency for YAML assertions, recorded by `go mod tidy` | Resolver-selected version, not an independently chosen numerical policy; halving a version is meaningless. |
 
 Both dependencies are reachable only through tests; production imports remain

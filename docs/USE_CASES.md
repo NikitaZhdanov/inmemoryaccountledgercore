@@ -1,8 +1,8 @@
 # Ledger use cases
 
-Status: documentation and verification scenarios, not executed tests. Business
+Status: verification scenarios; full replay tests remain planned. Business
 expectations come from [SPEC](SPEC.md); technical checks follow the proposed
-[DESIGN](DESIGN.md). This catalog adds no business policy or implementation.
+[DESIGN](DESIGN.md). This catalog maps specified behavior to verification scenarios.
 [TASK](TASK.md) remains the canonical input. Scenario IDs are labels, not new
 constants; amounts and boundary fixtures use [NUMBERS](../NUMBERS.md).
 
@@ -325,18 +325,18 @@ scenarios cover criterion 1 via X01; 2 via H04; 3 via H03; 4 via U01; 5 via
 H02/X02 (its approved premise does not occur for Auth-B); 6 via H05; 7 via H06;
 and 8 via X09. Refused claims do not become expected outcomes.
 
-No additional supplied-replay policy gap was found in this documentation review.
-This is coverage analysis, not evidence that an implementation passes. In particular,
-E5's final settlement is not a general partial-capture policy, and Auth-B's
-unsettled status does not justify inventing an active hold or expiry.
+The coverage review found no additional supplied-replay policy gap. Execution
+outcomes are recorded in [WORKLOG](../WORKLOG.md). E5's final settlement does not
+define a general partial-capture policy. Auth-B remains declined, so there is no
+active hold or expiry to report.
 
 Differing authorization booking/value dates, explicit partial/over-captures,
 expiry/cancellation, inactive-ID settlements, and additional unexercised input
 validation categories stay outside this catalog's asserted behavior; see
 [deferred scope](SPEC.md#verification-and-deferred-work) and
-[A10](../AMBIGUITIES.md#a10--duplicate-ids-and-errors). No BHD tariff, exchange
-rate, retry protocol, recovery policy, performance target, or concurrent-writer
-guarantee is introduced. The design remains sequential and in memory.
+[A10](../AMBIGUITIES.md#a10--duplicate-ids-and-errors). BHD tariffs, exchange
+rates, retry/recovery protocols, performance targets, and concurrent writers
+remain outside scope. The design remains sequential and in memory.
 
 ## Design-test candidates
 
@@ -352,13 +352,11 @@ Credible investigation candidates arising from the current technical choices are
 
 | Candidate | Evidence to seek before selecting a failing assertion | Boundary on the claim |
 | --- | --- | --- |
-| Interruption during multi-batch historical reconciliation | Exercise a real technical failure between committed batches; inspect whether retained history and rebuilt projections expose incomplete financial correction and whether it can be completed using the existing interface. | Per-batch atomicity does not establish whole-operation recovery. Do not assert an invented rollback/resume contract; an actual limitation and the useful property being probed must be explained. |
+| Interruption during multi-batch historical reconciliation | Exercise a real technical failure between committed batches; inspect whether retained history and rebuilt projections expose incomplete financial correction and whether it can be completed using the existing interface. | Per-batch atomicity does not establish whole-operation recovery. Explain the observed limitation and the useful property being probed; rollback/resume remains outside the current contract. |
 | Fixed-width accumulation sensitivity | Use independently derived, individually representable postings whose mathematical aggregate fits but an intermediate sum does not; inspect whether the implemented history scan cannot produce that representable projection. | DESIGN explicitly requires intermediates to fit. An expected overflow is a passing U07 check, not automatically a failing design test. A separate probe would expose a documented representation limitation, not a violated business requirement or a new promise of unbounded money. |
 
-Neither candidate is a selected test, an observed failure, or a request to add
-business policy. Reject a candidate if implementation supplies no meaningful
-limitation beyond an artificial assertion. Selection must name the evidenced
-trade-off, justify the property probed, annotate the real test inline, and keep
-its honest failure under the separately documented command. The proposed
-`go test -tags designlimitation ./...` command is not runnable yet. No failure,
-test execution, or completed failing-test deliverable is claimed here.
+Selection remains open. A candidate must expose a meaningful limitation of the
+implementation, with a documented trade-off and justification for the property
+being probed. Annotate the selected test inline and preserve its nonzero result
+under `go test -tags designlimitation ./...`. No tagged failing test exists yet;
+the deliverable remains pending.
