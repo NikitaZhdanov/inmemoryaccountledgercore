@@ -167,12 +167,27 @@ not trigger closes. Ledger validates identity and amounts, computes the outcome,
 and appends the corresponding input, outcome, monetary, and authorization
 records according to [SPEC](SPEC.md).
 
-[Ordinary submission](../internal/ledger/submission.go) scans stored attempts to
+[Submission](../internal/ledger/submission.go) scans stored attempts to
 reject reused event IDs before dispatch. Committed attempt count supplies fresh
 sequential identities independent of supplied IDs/order. A proposed posting
 history is rebuilt and checked at every affected value-date checkpoint before
 append; this catches overflow at later postings as well as the input's own day.
 No candidate projection becomes authoritative before storage commits it.
+Posting validation copies the record slice into a new backing array before
+appending proposed records, preserving other views of the supplied history.
+Batch builders have no storage side effects. Prepared submissions and early
+rejections share one commit helper, which appends each batch once and returns
+its outcome only after a successful append.
+
+[Authorization handling](../internal/ledger/authorization.go) computes decisions
+from the committed projection and builds transitions without changing it.
+Settlement batches contain one debit and a final transition linked to the
+original approval. Declines retain the requested amount and a linked diagnostic,
+while only approved transitions contribute active holds. Unsupported extensions
+return technical errors without appending; this includes missing/reused
+authorization IDs, authorizations with differing dates, inactive-ID settlements,
+and over-captures. Shared submission validation enforces the amount-sign rule in
+[SPEC](SPEC.md#monetary-validation-and-errors) before building transitions or postings.
 
 Financial changes affecting closed history trigger chronological reconciliation
 of affected account/days before the next input. Ledger projects the value-dated

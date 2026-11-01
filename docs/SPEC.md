@@ -3,7 +3,8 @@
 Status: business behavior resolved for the supplied replay and covered validation
 cases. P01 money primitives, P02 pure interest/allocation calculations, P03
 append-only storage, P04 history projections, and P05 configuration/ordinary
-submissions are implemented; remaining event workflows and replay are planned.
+submissions, plus P06 authorization/final settlement, are implemented. Reversals,
+instalment posting, reconciliation, and full replay remain planned.
 
 [TASK.md](TASK.md) preserves the original assignment and canonical input stream.
 This file defines behavior; [AMBIGUITIES.md](../AMBIGUITIES.md) records decision
@@ -80,9 +81,14 @@ The exact validation condition is amount × 10^currency_scale being an integer.
 No tolerance or rounding may make an invalid principal amount pass validation.
 HALF_EVEN is reserved for calculated interest.
 
-CREDIT and DEBIT inputs require nonnegative amounts, including zero. A credit
-posts the parsed amount; a debit posts its checked negation. Negative amounts
-reject without financial effects; see [the sign decision](../AMBIGUITIES.md#a10--ordinary-input-amount-signs).
+CREDIT, DEBIT, AUTHORIZATION, and SETTLEMENT inputs require nonnegative parsed
+amounts, including zero. Negative amounts reject with `DiagnosticNegativeAmount`
+without financial or hold effects. `InputKind` alone determines direction:
+CREDIT posts the amount, DEBIT and SETTLEMENT post its checked negation, and
+AUTHORIZATION reserves the amount without a monetary posting. Zero passes amount
+validation but remains subject to availability and authorization-reference rules.
+See [A10](../AMBIGUITIES.md#a10--ordinary-input-amount-signs) and
+[resolved A15](../AMBIGUITIES.md#a15--authorization-and-settlement-amount-signs).
 
 Reject every duplicate input ID, regardless of payload equality or original
 success, decline, or rejection. Preserve original input/outcome; record the
@@ -233,7 +239,9 @@ and record its observed nonzero result. Money and calculation unit tests exist
 under P01–P02, repository unit tests under P03, and direct history-projection
 tests under P04. P05 adds configuration/submission unit tests and real-component
 ordinary-posting integration; full replay and the required failing test remain
-pending. README links
+pending. P06 adds authorization/final-settlement tests, E1–E6 integration, and
+direct-fixture coverage of Auth-B's decline and retained decision after financial
+restoration. README links
 to [DEVELOPMENT](DEVELOPMENT.md) for runtime/dependency details and test commands;
 add replay instructions when built.
 Preserve intact commit history without squashing.
