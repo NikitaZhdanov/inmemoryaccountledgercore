@@ -122,6 +122,11 @@ Test dependencies remain in the module. Testify and analyzer choices are recorde
 in [A13](../AMBIGUITIES.md#a13--testify-unit-test-assertions) and
 [A12](../AMBIGUITIES.md#a12--lightweight-development-checks).
 
+Formatting targets use `gofmt` from the toolchain selected by `GO` and
+`GOTOOLCHAIN`, resolved through `go env GOROOT`. Setting `GOTOOLCHAIN` alone
+does not change the standalone `gofmt` on `PATH`. Override `GOFMT` explicitly
+only when a different formatter is intended.
+
 ## Continuous integration
 
 The [Go workflow](../.github/workflows/go.yml) runs one Linux job on current
