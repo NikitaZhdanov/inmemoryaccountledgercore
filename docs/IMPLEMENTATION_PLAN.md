@@ -20,9 +20,10 @@ Preserve intact commit history without squashing.
 For each task, keep [WORKLOG](../WORKLOG.md) timestamped with actual milestones
 and check results. Inventory new constants and test parameters, including their
 units, rationale, halving justification, and derived formulas in
-[NUMBERS](../NUMBERS.md) in the same change. Update [AMBIGUITIES](../AMBIGUITIES.md)
-if a real new decision arises and [REJECTED](../REJECTED.md) only for actual
-abandoned approaches or corrections. Ask about genuinely unresolved business
+[NUMBERS](../NUMBERS.md) in the same change. Follow
+[AGENTS documentation guidance](../AGENTS.md#documentation-maintenance) for decision
+records; update [REJECTED](../REJECTED.md) only for actual abandoned approaches or
+corrections. Ask about genuinely unresolved business
 behavior before dependent work; do not reopen agreed decisions or implement
 deferred authorization extensions. Keep [README](../README.md) accurate about
 which commands and features exist at each stage.
@@ -35,11 +36,9 @@ review its diff. The separately tagged failing test is excluded from normal
 checks. Completion checks below define requirements; actual outcomes belong in
 [WORKLOG](../WORKLOG.md).
 
-Use the project's Testify assertion convention for unit tests: Go's
-`testing` runner with Testify `require` for prerequisites and `assert` for
-independent results; preserve exact, type-sensitive money expectations. This
-supersedes the original standard-library-only test dependency choice without
-adding production dependencies; see [A13](../AMBIGUITIES.md#a13--testify-unit-test-assertions).
+Use the [DEVELOPMENT assertion convention](DEVELOPMENT.md#assertion-convention)
+for unit tests; the dependency choice is recorded in
+[A13](../AMBIGUITIES.md#a13--testify-unit-test-assertions).
 
 Follow DESIGN's [package/import map](DESIGN.md#packages-and-dependencies) and
 [repository contract](DESIGN.md#repository-boundary) as packages are introduced.

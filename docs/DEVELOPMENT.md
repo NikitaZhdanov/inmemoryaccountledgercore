@@ -57,6 +57,16 @@ expectations from [NUMBERS](../NUMBERS.md) and coverage from
 [USE_CASES](USE_CASES.md). Review import direction as packages are introduced;
 `go list -deps ./...` must match the [package map](DESIGN.md#packages-and-dependencies).
 
+### Assertion convention
+
+Use Go's `testing` runner with Testify `require` for prerequisites and expected
+error identities, and `assert` for independent results. Keep equality exact and
+type-sensitive; use `ErrorIs`/`NotErrorIs` for wrapped sentinel errors rather than
+message text. Preserve fixture tables and literal oracles when changing assertion
+code. Verify assertion-dependency changes with normal tests on the module baseline
+and full checks on the automation toolchain. The choice is recorded in
+[A13](../AMBIGUITIES.md#a13--testify-unit-test-assertions).
+
 ## Make targets and analyzers
 
 The [Makefile](../Makefile) is the command source of truth.

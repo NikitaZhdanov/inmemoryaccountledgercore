@@ -34,9 +34,13 @@ Update owning records alongside code and tests, as work happens:
   Explain when halving is meaningless; distinguish mandated values from choices,
   and include derivation formulas and rounding rules. Avoid unexplained magic
   numbers in code and tests.
-- [AMBIGUITIES.md](AMBIGUITIES.md): record each ambiguity, plausible alternatives,
-  resolution, rationale, observable consequences, and relevant tests. Keep
-  unresolved questions explicit and link to the owning behavior/design sections.
+- [AMBIGUITIES.md](AMBIGUITIES.md) is a decision record, not a changelog or catch-all.
+  Add or revise entries only to resolve a genuine ambiguity or consequential
+  trade-off; routine implementation changes belong in their owning records.
+  Distinguish task ambiguities from project design choices. Keep alternatives,
+  resolution, and rationale concise, retain unresolved questions explicitly, and
+  link to behavior/design/test owners instead of repeating consequences across
+  documents.
 - [REJECTED.md](REJECTED.md): assess every supplied acceptance criterion, explicitly
   refuse incorrect claims with reasons, and distinguish correct and conditional
   interpretations. Record actual superseded implementations with replacement
