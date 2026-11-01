@@ -1,6 +1,10 @@
-# Ambiguities and Decision Rationale
+# Task ambiguities and resolutions
 
-This record owns alternatives, resolutions, and rationale for task ambiguities and consequential project design choices. Explicit task requirements remain closed. [TASK](docs/TASK.md) owns the assignment, [SPEC](docs/SPEC.md) behavior, [DESIGN](docs/DESIGN.md) architecture, [NUMBERS](NUMBERS.md) numerical evidence, and [DEVELOPMENT](docs/DEVELOPMENT.md) tooling and API references.
+This record owns alternatives, resolutions, and rationale for task ambiguities.
+Explicit task requirements remain closed. [TASK](docs/TASK.md) owns the assignment,
+[SPEC](docs/SPEC.md) behavior, [DESIGN](docs/DESIGN.md) architecture choices,
+[NUMBERS](NUMBERS.md) numerical evidence, and
+[DEVELOPMENT](docs/DEVELOPMENT.md) tooling and test conventions.
 
 ## A1 — Replay order and projections
 
@@ -75,16 +79,3 @@ holds and settlement credits cannot result from negative input. Zero remains
 subject to availability and authorization-reference rules. See
 [monetary validation](docs/SPEC.md#monetary-validation-and-errors) and
 [verification values](NUMBERS.md#authorization-and-settlement-fixtures).
-
-## A16 — Ledger package boundaries
-
-**Project design choice.** Split the broad ledger package by responsibility:
-`posting` prepares input batches without storage access, `projection` rebuilds
-read-only history and checks proposed batches, and `interest` owns daily interest
-policy. Keep configuration, repository commits, and chronological closing in
-`ledger`. Keep instalment allocation private to posting, its only production
-caller. This replaces the single business-logic package; a package per event
-kind would fragment shared validation and outcome construction. Follow Go's
-[package cohesion guidance](https://go.dev/blog/package-names) and keep the
-dependency graph acyclic. The [package map](docs/DESIGN.md#packages-and-dependencies)
-owns the resulting architecture. Business rules and record identities are unchanged.

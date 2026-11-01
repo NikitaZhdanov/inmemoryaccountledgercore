@@ -1,47 +1,11 @@
 # Ledger use cases
 
-Status: verification scenarios; full scenario replay and report tests exist.
-Business expectations come from [SPEC](SPEC.md);
-technical checks follow the
-[DESIGN](DESIGN.md). This catalog maps specified behavior to verification scenarios.
-[TASK](TASK.md) remains the canonical input. Scenario IDs are labels, not new
-constants; amounts and boundary fixtures use [NUMBERS](../NUMBERS.md).
-
-P04 [projection tests](../internal/projection/projection_test.go) cover H01, H02,
-H05, X01, and X11 with direct recorded-history fixtures, including overflow,
-corrected unpaid accruals, and preserved authorization outcomes. They do not
-execute input processing or reconciliation; those integration checks remain
-scheduled in [the implementation plan](IMPLEMENTATION_PLAN.md).
-
-P07 [reversal](../internal/ledger/corrections_test.go) and
-[instalment](../internal/ledger/instalments_test.go) unit tests plus
-[posting integration](../tests/replay/corrections_test.go) cover H05/H06's
-principal postings and U04 duplicates.
-[Correction-builder tests](../internal/posting/corrections_test.go) cover X06's
-principal-correction idempotence; [allocation tests](../internal/posting/allocation_test.go)
-retain the exact conserving-allocation oracles.
-P08 [closing tests](../internal/ledger/closing_test.go) cover H04/H05's fee and
-accrual oracle using controlled principal fixtures, H09's configured policies,
-X03's unpaid rounded interest, X05's own-fee exclusion and earlier-fee carry,
-X06's repeated closing/correction, X07's renewed eligibility, and X09's corrected
-unpaid accruals. [Real-storage tests](../tests/replay/closing_test.go) check account
-isolation and idempotent fee/refund records. P09
-[checkpoint integration](../tests/replay/backdating_test.go) covers H04–H06,
-U02/U04, and X01/X05/X06/X09/X11 through automatic financial submissions with
-explicit closes, before capitalization. Its
-[workflow failure tests](../internal/ledger/backdating_test.go) cover U07's
-committed-input and committed-earlier-day boundaries, including duplicate
-rejection while reconciliation is incomplete. P10
-[finalization tests](../internal/ledger/finalization_test.go) cover H07/H09,
-U07, and X03/X06/X08/X09; the checkpoint integration now verifies final daily
-accruals, exact capitalization, final balances, and retained fee/decision history.
-P11 [scenario unit tests](../internal/scenario/scenario_test.go) independently
-verify TASK source fields, injected configuration, and technical-failure stops.
-The [canonical replay regression](../tests/replay/scenario_test.go) runs the reusable
-runner against real core/memory components for H01–H07, U01/U02/U04, and
-X01/X06/X09/X11, including explicit close positions, deterministic fresh history,
-and duplicate resubmission without financial/hold effects. Report assertions
-remain P12.
+This catalog owns verification scenarios and their implemented test coverage.
+[SPEC](SPEC.md) owns business expectations, [DESIGN](DESIGN.md) technical
+boundaries, and [TASK](TASK.md) the canonical input. Scenario IDs are labels;
+amounts and boundary fixtures come from [NUMBERS](../NUMBERS.md). The
+[coverage matrix](#coverage-review-and-scope-boundary) maps all 28 scenarios to
+executable assertions; execution outcomes belong to [WORKLOG](../WORKLOG.md).
 
 Each scenario is independent unless its preconditions name a replay checkpoint.
 Validation fixtures supplement, rather than modify, E1–E10. Expected rejection,
@@ -378,18 +342,42 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
 
 ## Coverage review and scope boundary
 
-The review includes the following often missed cases within the agreed scope:
+Every scenario has normal regression coverage. The table names representative
+assertions; the linked files contain additional boundary and failure cases.
+Unit tests sit beside their owning packages; integration tests compose real
+components under `tests/replay`. Commands and placement conventions belong to
+[DEVELOPMENT](DEVELOPMENT.md#test-organization).
 
-| Source area | Scenario coverage |
+| Scenario | Test file and representative assertion |
 | --- | --- |
-| Source fields, E10 after E9, explicit closes and historical corrections | H01, H04–H08, X01, X11 |
-| Holds, final settlement, unknown ID, Auth-B's retained decline | H02–H03, U01–U02, X02 |
-| Fee chronology, own-fee exclusion, repeated/renewed eligibility, explicit BHD no-fee assumption | H04–H05, H09, X05–X08 |
-| Complete initialization policy and descriptor compatibility | U05, X12 |
-| Currency precision, residual, ties, integer bounds and arithmetic failures | H06, U03, U06–U07, X03–X04, X10, X12 |
-| Rebuilt unpaid interest, late BHD accrual, capitalization and zero boundary | H05–H07, X03, X06, X08–X09 |
-| Diagnostics/continuation, duplicates versus corrections, immutable history | U01–U07, X06, X11 |
-| Final row placement, linked fee history, currency formatting, determinism | H08, X01, X04, X06 |
+| H01 | [Ordinary integration](../tests/replay/ordinary_test.go): `TestOrdinaryPostings` |
+| H02 | [Authorization integration](../tests/replay/authorization_test.go): `TestAuthorizationAndFinalSettlement` |
+| H03 | [Authorization unit tests](../internal/ledger/authorization_test.go): `TestFinalSettlementReleasesOnlyItsEntireHold` |
+| H04 | [Checkpoint integration](../tests/replay/backdating_test.go): `TestBackdatedSubmissionsReconcileBeforeNextInputAndFinalize` |
+| H05 | [Checkpoint integration](../tests/replay/backdating_test.go): same test, E9 refunds/accruals and retained decisions |
+| H06 | [Correction integration](../tests/replay/corrections_test.go): `TestLinkedReversalAndLateInstalments`; checkpoint integration verifies late Day 5 interest |
+| H07 | [Canonical replay](../tests/replay/scenario_test.go): `TestCanonicalScenario`, exact daily sums and one credit per account |
+| H08 | [Report integration](../tests/replay/report_test.go): `TestCanonicalReport`; [composition](../cmd/replay/main_test.go): `TestRunFreshReplayAndOutputFailure` |
+| H09 | [Closing](../internal/ledger/closing_test.go): `TestClosingConfiguredCurrenciesAndInterestTies`; [finalization](../internal/ledger/finalization_test.go): `TestFinalizationUsesConfiguredChargeIncludingZero` |
+| U01 | [Authorization integration](../tests/replay/authorization_test.go): `TestAuthorizationAndFinalSettlement`, E6 rejection and continuation |
+| U02 | [Checkpoint integration](../tests/replay/backdating_test.go): E8 proposed availability and decline retained after E9/finalization |
+| U03 | [Submission](../internal/ledger/submission_test.go): `TestOrdinaryInputRejectionsAndContinuation`; [instalments](../internal/ledger/instalments_test.go): `TestInstalmentRejectionsAndContinuation` |
+| U04 | [Submission](../internal/ledger/submission_test.go): `TestDuplicateInputsPreserveOriginalOutcomes`; [authorization](../internal/ledger/authorization_test.go): `TestAuthorizationAndSettlementDuplicateOutcomes`; [canonical replay](../tests/replay/scenario_test.go): full resubmission |
+| U05 | [Configuration](../internal/ledger/configuration_test.go): `TestConfigurationValidationBeforeAppend`; [composition](../cmd/replay/main_test.go): `TestInvalidCompositionStopsBeforeReplayAndReport` |
+| U06 | [Money](../internal/domain/money_test.go): `TestParseMoneyRepresentabilityErrors`; [submission](../internal/ledger/submission_test.go): `TestOrdinaryInputRejectionsAndContinuation` |
+| U07 | [Money](../internal/domain/money_test.go): `TestCheckedArithmetic`, `TestSum`; [submission](../internal/ledger/submission_test.go): `TestDerivedPostingFailuresAreAtomic`; [backdating](../internal/ledger/backdating_test.go): `TestSubmissionFeeOverflowRetainsCommittedBatches`; [finalization](../internal/ledger/finalization_test.go): `TestFinalizationFailuresAppendNothing`, `TestFinalizationAccrualSumOverflow` |
+| X01 | [Canonical replay](../tests/replay/scenario_test.go): Day 2 prefix fee-free/posted/final balances; [projection](../internal/projection/projection_test.go): `TestBalanceObservations` |
+| X02 | [Authorization](../internal/ledger/authorization_test.go): `TestAuthorizationAvailabilityBoundaries`, `TestAuthorizationIncludesPostedFeesExcludesUnpaidInterestAndFutureValues` |
+| X03 | [Interest](../internal/interest/interest_test.go): `TestDailyInterest`; [closing](../internal/ledger/closing_test.go): `TestClosingConfiguredCurrenciesAndInterestTies` |
+| X04 | [Money](../internal/domain/money_test.go): `TestParseMoney`, `TestMoneyFormat`; [submission](../internal/ledger/submission_test.go): `TestOrdinaryPostingAndSourceRetention`; [report](../internal/report/report_test.go): `TestFormatUsesSuppliedOrderAndPrecision` |
+| X05 | [Closing](../internal/ledger/closing_test.go): `TestFeeSelfEligibilityRenewalAndEarlierFeeCarry`; checkpoint integration verifies automatic E9 refunds |
+| X06 | [Correction builder](../internal/posting/corrections_test.go): `TestPrincipalCorrectionIdempotenceAndConflictingCause`; checkpoint integration repeats reconciliation, closing, and finalization without records |
+| X07 | [Closing](../internal/ledger/closing_test.go): `TestFeeSelfEligibilityRenewalAndEarlierFeeCarry`, two refund/renewal cycles |
+| X08 | [Finalization](../internal/ledger/finalization_test.go): `TestFinalizationCapitalizationFeeBoundaries`, `TestFinalizationReconcilesExistingOwnFee` |
+| X09 | [Checkpoint integration](../tests/replay/backdating_test.go): replacement accruals before/after E7/E9/E10 and exact final capitalization; [finalization](../internal/ledger/finalization_test.go): `TestFinalizationExcludesCapitalizationFromSameDayInterest` |
+| X10 | [Interest](../internal/interest/interest_test.go): maximum-base case in `TestDailyInterest`; [money](../internal/domain/money_test.go): `TestCurrencyChecksOnOperations` |
+| X11 | [Repository](../internal/repository/memory/repository_test.go): `TestHistoryOwnership`, `TestAppendAtomicValidation`; [projection](../internal/projection/projection_test.go): `TestProjectionOwnsHistoryAndReturnedContainers`; [canonical replay](../tests/replay/scenario_test.go): original records/outcomes survive corrections |
+| X12 | [Currency](../internal/domain/currency_test.go): `TestCurrencyValidation`, `TestMoneyConfigurablePrecision`, `TestCurrencyCompatibility`; [submission](../internal/ledger/submission_test.go): `TestOrdinaryConfiguredPrecision`; [configuration](../internal/ledger/configuration_test.go): `TestConfigurationAcceptsCustomCurrencies` |
 
 All eight criterion verdicts remain those in [REJECTED](../REJECTED.md): H/X/U
 scenarios cover criterion 1 via X01; 2 via H04; 3 via H03; 4 via U01; 5 via

@@ -2,7 +2,7 @@
 
 This document defines package boundaries, data ownership, and processing
 mechanisms for the Go ledger. [SPEC](SPEC.md) owns business behavior;
-[AMBIGUITIES](../AMBIGUITIES.md) records decisions and rationale.
+[AMBIGUITIES](../AMBIGUITIES.md) records task interpretations and their rationale.
 Implementation status and sequencing belong to the
 [implementation plan](IMPLEMENTATION_PLAN.md); tooling and test organization
 belong to [DEVELOPMENT](DEVELOPMENT.md).
@@ -10,8 +10,9 @@ belong to [DEVELOPMENT](DEVELOPMENT.md).
 ## Packages and dependencies
 
 Production code uses the Go standard library. The table lists allowed imports
-within this module.
-The split follows [A16](../AMBIGUITIES.md#a16--ledger-package-boundaries).
+within this module. The focused posting, projection, and interest packages replace
+the broad ledger business-logic package. Ledger retains configuration and workflow
+commits; a package per event kind would fragment shared validation and outcomes.
 
 | Package | Responsibility | Allowed internal imports |
 | --- | --- | --- |
@@ -78,6 +79,9 @@ returns only an error and preserves the caller's history and backing slice.
 ## Money representation
 
 Money pairs signed `int64` minor units with an immutable currency descriptor.
+Go value types and checked int64 arithmetic replace the initial big.Int proposal
+to reduce representation and ownership complexity. Configured code/scale values
+replace the built-in currency enumeration so composition supplies currency identity.
 Currency identity includes code and decimal scale. Money and currency have invalid
 Go zero values. Descriptor validation and compatibility follow
 [monetary validation](SPEC.md#monetary-validation-and-errors), with precision
@@ -106,7 +110,7 @@ No binary floating point, decimal context, or tolerance is used.
 
 The [currency](../internal/domain/currency.go) and
 [money](../internal/domain/money.go) code own API signatures and error sentinels;
-[A9](../AMBIGUITIES.md#a9--currency-precision-and-instalments) records the parsing
+[A8](../AMBIGUITIES.md#a8--currency-precision-and-instalments) records the parsing
 trade-off. Callers use `errors.Is` to distinguish input
 range/precision errors from derived arithmetic overflow.
 
@@ -139,7 +143,8 @@ Canonical values and the explicit no-fee assumption are owned by
 ## Repository boundary
 
 Ledger owns a small [interface](../internal/ledger/repository.go) with `History()`
-and `Append(batch)` using domain types. The
+and `Append(batch)` using domain types. This separates storage from business logic
+without general infrastructure for this workload. The
 [memory adapter](../internal/repository/memory/repository.go) stores an append-only
 slice and a record-key index. History scans suffice without storage-specific
 queries or persisted aggregates.

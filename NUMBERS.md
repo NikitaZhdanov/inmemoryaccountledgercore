@@ -15,9 +15,15 @@ This document records all numerical sources, explicit parameters, derived values
 The exact rate is $4/10,000 = 1/2,500$. Daily interest divides positive
 minor units by 2,500; no balance-times-rate intermediate is needed.
 
----
+The nonzero replay amounts and six-day window are supplied by
+[TASK](docs/TASK.md#event-stream-replayed-in-this-order); halving them would change
+the assignment. Zero is its own half. Currency scales and instalment counts are
+discrete; the smallest units, AED 0.01 and BHD 0.001, cannot be halved at those
+scales. HALF_EVEN is the selected convention in
+[A5](AMBIGUITIES.md#a5--interest-rounding-representation-and-finalization).
+Derived results below follow exact formulas rather than adjustable parameters.
 
-## 2. Precision & Representation
+## Precision and representation
 
 ### Int64 representation
 
@@ -38,7 +44,46 @@ At the maximum positive base, independent long division gives
 Since 807 < 1,250, daily interest is 3,689,348,814,741,910 minor units:
 AED 36,893,488,147,419.10 or BHD 3,689,348,814,741.910.
 
----
+The bounds follow the signed 64-bit type, chosen for value semantics and checked
+arithmetic; halving the width or imposing half-range caps would reduce headroom
+without a recorded requirement. Adjacent unit probes cross the actual endpoints.
+
+### Configurable currency verification
+
+| Parameter or fixture | Source, derivation, and purpose |
+| --- | --- |
+| Code length 3; ASCII A–Z | Project syntax convention, not a currency registry. Changing length/alphabet changes the API grammar. |
+| Scales 0–18; invalid −1/19 | 10^18 fits int64; 10^19 does not. Endpoint and adjacent-failure tests; half of 18 omits supported precision. |
+| USD/2, PTS/0, TOK/4, MAX/18 | Independent descriptors spanning both endpoints and precision beyond the replay currencies. Codes are labels; changing scale changes units. |
+| PTS +0012.000 → 12; −12 → −12; zero → zero | Scale-zero sign, padding, and redundant-zero fixtures. Halving adds no parsing path. |
+| TOK 1.2 → 12,000 units; −12.345600 → −123,456; 0.0001 → 1 | Multiplication by 10^4; mixed digits test padding direction and zero trimming. Half a minor unit cannot be represented. |
+| MAX 0.000000000000000001 → 1; signed endpoints 9.223372036854775807 / −9.223372036854775808 | Multiplication by 10^18; endpoint, trailing-zero, and adjacent-outside probes. Halving misses the boundaries. |
+| PTS 1.1; TOK 1.00001; MAX 0.0000000000000000001 | Nonzero excess digits at each selected scale. |
+| TOK/4 versus TOK/3 or PTS/4; independent equal TOK/4 values | Code and scale must both match. One-unit operands add to two or subtract to zero; minimal nonzero compatibility fixtures. |
+
+Empty, short/long, lowercase, numeric, spaced, and fullwidth codes are lexical
+rejections. Money syntax uses decimal radix 10, an optional ASCII sign, integer
+digits, and an optional point with fractional digits. Examples AED +0012.30 →
+1,230 units and BHD −00012.345000 → −12,345 test mixed digits and normalization.
+Separators, exponents, incomplete decimals, whitespace, Unicode digits/signs,
+NaN, and Inf reject. Syntax lengths and labels have no monetary half.
+
+### Development automation
+
+| Parameter | Recorded source or convention |
+| --- | --- |
+| Go 1.23.1; module `inmemoryaccountledgercore` | Module baseline matches the original available compiler, `go1.23.1 darwin/amd64`. The module path is a local import identity. |
+| Staticcheck v0.8.2; govulncheck v1.9.0 | Existing Makefile pins, originally verified against the module proxy; analyzers require Go 1.26 or newer. Production uses only the standard library. |
+| Testify v1.12.1; indirect go.yaml.in/yaml/v3 v3.0.5 | Pinned test dependency and its resolved indirect module in go.mod/go.sum. Assertions use exact equality without tolerance. |
+| CI `stable`; prior local automation Go 1.27.3 | Workflow selection and observed verification compiler; actual run versions/outcomes belong to WORKLOG. |
+| One Linux job; ubuntu-latest; 10-minute timeout | Small CI footprint with race support; timeout allows cold analyzer/race builds while bounding stalled runs. Halving allows less cold-cache margin. |
+| Weekly cron `23 6 * * 1`; weekly Dependabot; schema 2 | Monday 06:23 UTC vulnerability refresh away from the hour boundary; low-volume action updates. Calendar/schema fields are discrete. |
+| checkout v7.0.1; setup-go v7.0.0; pinned release SHAs | Existing workflow release identities; Dependabot maintains action pins. |
+| Test count 1; `coverage.out`; no coverage threshold | Uncached race/coverage execution and ignored output artifact; no arbitrary percentage selected. |
+
+Versions, hashes, paths, and exit codes are identities or conventions with no
+meaningful half. Half a job or execution is undefined. Tooling choices and commands
+belong to [DEVELOPMENT](docs/DEVELOPMENT.md#make-targets-and-analyzers).
 
 ## Allocation and rounding rules
 
@@ -112,6 +157,8 @@ Additional allocation oracles apply at both currency scales:
 | 9,223,372,036,854,775,807 | 3 | 3,074,457,345,618,258,602; 3,074,457,345,618,258,602; 3,074,457,345,618,258,603 | Maximum total |
 | −9,223,372,036,854,775,808 | 3 | −3,074,457,345,618,258,602; −3,074,457,345,618,258,602; −3,074,457,345,618,258,604 | Minimum total without negation |
 | Either signed endpoint | 1 | Original total | Single-part identity |
+
+Three BHD 3.334 parts would total 10.002, exceeding E10 by 0.002.
 
 ---
 

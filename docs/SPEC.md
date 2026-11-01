@@ -1,12 +1,8 @@
 # Ledger specification
 
-Status: business behavior resolved for the supplied replay and covered validation
-cases. P01 money primitives, P02 pure interest/allocation calculations, P03
-append-only storage, P04 history projections, and P05 configuration/ordinary
-submissions, P06 authorization/final settlement, and P07 linked principal reversal
-and instalment posting, P08 explicit closing/fee reconciliation, and P09 automatic
-historical reconciliation after financial submissions, and P10 Day 6 finalization
-and P11 canonical scenario execution and P12 executable reporting are implemented.
+Business behavior is resolved for the supplied replay and covered validation
+cases. Delivery status belongs to the [implementation plan](IMPLEMENTATION_PLAN.md);
+test evidence is mapped in [USE_CASES](USE_CASES.md#coverage-review-and-scope-boundary).
 
 [TASK.md](TASK.md) preserves the original assignment and canonical input stream.
 This file defines behavior; [AMBIGUITIES.md](../AMBIGUITIES.md) records decision
@@ -240,34 +236,18 @@ rejection, configurable precision/currency compatibility, initialization rejecti
 for missing policies, explicit no-fee behavior, instalment conservation, and
 interest reconciliation.
 
-The assignment still requires a real isolated failing test. Choose it during
-implementation, when it can expose a genuine design limitation; no assertion or
-expected result is preselected. Explain what it reveals inline, preserve its
-failure, isolate it from the passing normal suite, document its exact command,
-and record its observed nonzero result. Money and calculation unit tests exist
-under P01–P02, repository unit tests under P03, and direct history-projection
-tests under P04. P05 adds configuration/submission unit tests and real-component
-ordinary-posting integration. P06 adds authorization/final-settlement tests,
-E1–E6 integration, and direct-fixture coverage of Auth-B's decline after financial
-restoration. P07 adds linked principal-reversal and instalment-posting unit tests
-and real-component integration. P08 adds explicit chronological closing, fee
-refunds/renewed adjustments, and accrual-restoration tests with controlled
-principal fixtures, plus real-storage account isolation. P09 adds E7/E8/E9/E10
-checkpoint integration through submissions, preserving decisions while correcting
-fees and accruals, and tests partial progress on technical failures.
-P10 adds atomic finalization tests for capitalization/fee boundaries, exact
-rounded sums, same-day interest exclusion, idempotence, and technical failures;
-checkpoint integration now verifies final balances after all corrections.
-P11 adds source-field fidelity and complete scenario-runner integration with
-explicit close positions, checkpoint/final oracles, deterministic fresh runs,
-duplicate resubmission, and technical-failure propagation. P12 adds pure report
-formatting, executable configuration/composition, and literal full-table replay
-assertions for precision, fees, recorded lifecycle, and reason placement.
-P13's tagged integration test exposes the absence of whole-submission financial
-atomicity on technical failure, as described in the
+The assignment requires a real isolated failing test against an evidenced design
+limitation. Explain what it reveals inline, preserve its failure, isolate it from
+the passing normal suite, document its exact command, and record its observed
+nonzero assertion result. Compilation/setup failures, skips, unconditional
+failures, and expected-error wrappers do not satisfy this deliverable.
+The selected [probe](../tests/replay/designlimitation_test.go) exposes the absence
+of whole-submission financial atomicity on technical failure, as described in the
 [repository boundary](DESIGN.md#repository-boundary). Its stronger atomicity
-expectation is a design probe outside the behavior promised above. README links to
-[DEVELOPMENT](DEVELOPMENT.md) for runtime/dependency details, replay, and test commands.
+expectation is outside the behavior promised above. Coverage and investigation
+evidence belong to [USE_CASES](USE_CASES.md); observed results belong to
+[WORKLOG](../WORKLOG.md). [DEVELOPMENT](DEVELOPMENT.md) owns runtime/dependency
+details, replay, and normal/isolated test commands.
 Preserve intact commit history without squashing.
 
 Extra workflows—authorizations with differing booking/value dates, explicit

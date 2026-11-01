@@ -38,59 +38,21 @@ go test ./internal/scenario
 go test ./internal/report
 go test ./cmd/replay
 go test ./tests/replay
+go test ./internal/...
 go test ./...
 go vet ./...
 ```
 
 The focused commands run domain, policy, projection, posting, ledger, repository,
 scenario, report, and executable composition tests plus real-component replay integration;
-`go test ./...` runs all implemented tests.
+`go test ./...` runs all normal tests; the tagged design probe runs separately.
 Success prints `ok`; vet is silent on success. A failing
-assertion or check returns a nonzero exit status. The money tests use literal
-expected values for configurable precision, trailing zeros, signed endpoints,
-code/scale compatibility, and overflow, including intermediate accumulation.
-Calculation tests cover HALF_EVEN ties, maximum-base interest, and exact
-instalment conservation using the [numerical inventory](../NUMBERS.md).
-Repository tests cover ordered snapshots, detached containers and payloads,
-atomic key/envelope validation, and retained attempts sharing an event ID.
-They do not execute the later duplicate-input or other ledger policies.
-Projection tests use literal history records to check observation prefixes,
-value-date balances, fee exclusions/nets, retained authorization decisions and
-holds, corrected accruals, capitalization exclusion, detached state, and derived
-overflow. Configuration/submission tests cover explicit policy coverage,
-configuration ownership, exact principal validation, source retention, duplicates,
-and atomic technical failures. Authorization tests cover exact-zero/negative
-proposed availability, recorded declines, posted fees, unpaid-interest exclusion,
-final settlement/full hold release, duplicate outcomes, and atomic failures.
-Reversal/instalment tests cover original-entry and correction-cause links,
-internal correction idempotence versus duplicate input rejection, ordered exact
-allocation, retained source fields, and atomic append/overflow failures.
-`tests/replay` wires the real core and memory adapter for E1–E6, including unknown
-settlement rejection and continuation, and for E7/E9/E10 principal posting and
-currency isolation. Closing tests cover explicit Days 1–5 fee reconciliation,
-linked refunds/renewed adjustments, replaced unpaid accruals, policy/currency
-isolation, and append/arithmetic failures, including an interruption between
-committed days. Real-storage integration also checks independent account/day
-obligations. Backdating integration submits E1–E10 with explicit Days 1–5 closes
-and checks financial restoration, Auth-B's retained decline, late BHD accrual,
-and duplicate/correction idempotence before capitalization. Ledger tests inject
-append failures at the input and successive fee batches and arithmetic failure
-during automatic reconciliation, verifying retained commits and no partial
-failing batch. Finalization tests cover exact rounded capitalization sums,
-capitalization-inclusive fee boundaries, zero/custom charges, same-day interest
-exclusion, repeat calls, and atomic append/overflow failures. The checkpoint
-integration also verifies the corrected six-day accruals and final balances.
-Scenario unit tests independently compare every TASK source field and verify
-injected account/currency values and stopping on submission, correction, close,
-or finalization failures. Canonical replay tests invoke the runner against fresh
-real components and check explicit close positions, checkpoint/final numerical
-oracles, retained decisions and fee/refund links, deterministic fresh runs, and
-duplicate resubmission without financial or hold effects. Report tests use direct
-history fixtures for booking-day lifecycle, assessed-day fee grouping, precision,
-supplied ordering, read-only behavior, and errors without partial output. Replay
-integration compares the full table with a literal oracle and checks retained
-validation reasons. Executable tests check exact configuration, fresh-run
-determinism, output failures, and constructor rejection before replay/report.
+assertion or check returns a nonzero exit status.
+
+Coverage by behavior and named test assertion is maintained in
+[USE_CASES](USE_CASES.md#coverage-review-and-scope-boundary); independent exact
+expectations belong to [NUMBERS](../NUMBERS.md). Normal tests include the
+canonical replay, report, configuration, and interruption/recovery regressions.
 
 For the full local checks, using a current Go toolchain:
 
@@ -119,12 +81,14 @@ error identities, and `assert` for independent results. Keep equality exact and
 type-sensitive; use `ErrorIs`/`NotErrorIs` for wrapped sentinel errors rather than
 message text. Preserve fixture tables and literal oracles when changing assertion
 code. Verify assertion-dependency changes with normal tests on the module baseline
-and full checks on the automation toolchain. The choice is recorded in
-[A13](../AMBIGUITIES.md#a13--testify-unit-test-assertions).
+and full checks on the automation toolchain. Testify replaces handwritten
+assertion checks while retaining Go's runner and the existing exact expectations.
 
 ## Make targets and analyzers
 
 The [Makefile](../Makefile) is the command source of truth.
+Make, Go's built-in checks, and standalone analyzers keep the toolset smaller
+than a multi-linter framework or service integration.
 
 | Target | Checks or output |
 | --- | --- |
@@ -140,9 +104,8 @@ The [Makefile](../Makefile) is the command source of truth.
 
 Analyzer versions are pinned in Makefile and invoked with
 `go run package@version`; their dependencies stay outside the application module.
-Test dependencies remain in the module. Testify and analyzer choices are recorded
-in [A13](../AMBIGUITIES.md#a13--testify-unit-test-assertions) and
-[A12](../AMBIGUITIES.md#a12--lightweight-development-checks).
+Test dependencies remain in the module. Version pins and automation parameters
+are recorded in [NUMBERS](../NUMBERS.md#development-automation).
 
 Formatting targets use `gofmt` from the toolchain selected by `GO` and
 `GOTOOLCHAIN`, resolved through `go env GOROOT`. Setting `GOTOOLCHAIN` alone
@@ -220,6 +183,9 @@ Run the required failing design test separately:
 ```sh
 go test -tags designlimitation ./tests/replay/...
 ```
+
+The final audit runs `go test -tags designlimitation ./...` separately from normal
+checks to verify the same assertion with all packages included.
 
 The tagged [integration test](../tests/replay/designlimitation_test.go),
 `TestDesignLimitationFailedSubmissionIsFinanciallyAtomic`, exits nonzero
