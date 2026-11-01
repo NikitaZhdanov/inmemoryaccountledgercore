@@ -14,7 +14,7 @@ The table lists allowed imports within this module.
 
 | Package | Responsibility | Allowed internal imports |
 | --- | --- | --- |
-| `internal/domain` | Shared models, currency and money values, exact parsing/formatting, checked arithmetic. | None. |
+| `internal/domain` | Shared models, currency and money values, exact parsing/formatting, checked arithmetic, ratio rounding. | None. |
 | `internal/ledger` | Input decisions, balance/state projections, interest/allocation policy, reconciliation, closing, and the repository interface. | `domain` |
 | `internal/repository/memory` | Append-only storage, detached history, record-key validation, atomic batches. | `domain` |
 | `internal/report` | Pure report projection and formatting from detached history and read-only ledger queries/projections. | `domain`, `ledger` |
@@ -70,7 +70,11 @@ order and requires every intermediate to fit.
 Interest uses integer quotient/remainder division by the
 [exact rate denominator](../NUMBERS.md#constants-and-sources); remainder comparison
 and quotient parity implement HALF_EVEN without a potentially overflowing
-balance-times-rate intermediate. Instalment allocation uses integer quotient and
+balance-times-rate intermediate. Shared signed integer ratio rounding belongs to
+the standalone [domain rounding function](../internal/domain/rounding.go);
+ledger daily interest owns the rate and positive-base policy. The rounding
+primitive is independent of currencies and can serve other calculated amounts.
+Instalment allocation uses integer quotient and
 residual under the [allocation rule](SPEC.md#instalments). No binary floating
 point, decimal context, or tolerance is used.
 

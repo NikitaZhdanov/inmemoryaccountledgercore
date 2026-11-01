@@ -29,15 +29,18 @@ go mod download
 
 ```sh
 go test ./internal/domain
+go test ./internal/ledger
 go test ./...
 go vet ./...
 ```
 
-The focused command runs the money unit tests; `go test ./...` runs all
-implemented tests. Success prints `ok`; vet is silent on success. A failing
+The focused commands run money and pure calculation unit tests;
+`go test ./...` runs all implemented tests. Success prints `ok`; vet is silent on success. A failing
 assertion or check returns a nonzero exit status. The money tests use literal
 expected values for configurable precision, trailing zeros, signed endpoints,
 code/scale compatibility, and overflow, including intermediate accumulation.
+Calculation tests cover HALF_EVEN ties, maximum-base interest, and exact
+instalment conservation using the [numerical inventory](../NUMBERS.md).
 
 For the full local checks, using a current Go toolchain:
 
