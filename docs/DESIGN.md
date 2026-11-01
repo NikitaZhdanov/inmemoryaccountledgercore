@@ -209,7 +209,23 @@ requests for other kinds remain unsupported. Reversal account/currency validatio
 is shared with amount parsing; its principal comes from the original entry rather
 than a separately parsed input amount.
 
-Financial changes affecting closed history trigger chronological reconciliation
+[Explicit closing/reconciliation](../internal/ledger/closing.go) builds one batch
+per account/day, combining a new close checkpoint with any fee effect. It reads
+committed history before each day so earlier fee corrections carry forward.
+An original assessment key derives from account/day; later refund/adjustment keys
+derive from that obligation and correction cause and link to the original
+assessment. Required-net equality skips append entirely. Proposed batches use
+the same projection and affected-value-date checks as submissions. The existing
+projection rebuild derives corrected daily accruals without stored accrual records.
+API parameters, supported days, and validation are documented in code.
+
+The replay owns its close schedule and capitalization checkpoint. Ordinary
+closing accepts a supplied positive day without a fixed replay-window cutoff;
+the caller chooses ordinary closing or capitalization-aware finalization.
+The canonical schedule belongs to [SPEC](SPEC.md#history-and-replay) and will be
+supplied by scenario composition, not encoded as a day limit in the core.
+
+Financial changes affecting closed history require chronological reconciliation
 of affected account/days before the next input. Ledger projects the value-dated
 balance, excludes the assessed day's own net fee from eligibility, compares the
 configured required charge with recorded net effects, and appends a linked

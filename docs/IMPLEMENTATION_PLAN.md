@@ -1,9 +1,10 @@
 # Implementation plan
 
-Status: P01–P07 implemented for their specified workflows; P08–P14 remain planned.
+Status: P01–P08 implemented for their specified workflows; P09–P14 remain planned.
 Money, calculation, repository, projection, configuration, posting, authorization,
-settlement, reversal, and instalment tests exist, including real-component posting
-integration; full replay and the required failing design test remain pending.
+settlement, reversal, instalment, and explicit closing/reconciliation tests exist,
+including real-component integration; automatic historical reconciliation, full
+replay, and the required failing design test remain pending.
 
 [TASK](TASK.md) preserves the assignment; [SPEC](SPEC.md) defines agreed behavior;
 [DESIGN](DESIGN.md) proposes its Go implementation; [USE_CASES](USE_CASES.md)
@@ -219,8 +220,8 @@ compose real components before the scenario runner exists.
   inputs reject before effects. Fresh attempts to reverse an already reversed
   debit record business rejections. E10 posts all three ordered BHD credits in one
   batch. Tests cover retained source fields, currency isolation, exact totals,
-  and technical-failure atomicity. Fee refunds, closed-day accrual restoration,
-  and full E7/E8/E9 integration remain in P08/P09.
+  and technical-failure atomicity. P08 covers fee refunds and closed-day accrual
+  restoration with controlled fixtures; full E7/E8/E9 integration remains in P09.
 - **Scope:** In `internal/ledger`, add E9's principal reversal linked to E7,
   retaining the original record and using booking Day 6/value Day 2. Add E10's
   ordered instalment entries with its original Day 5 dates. Separate
@@ -236,6 +237,20 @@ compose real components before the scenario runner exists.
 
 ### P08 — Daily fee reconciliation and unpaid accruals
 
+- **Status:** Implemented in [explicit closing/reconciliation](../internal/ledger/closing.go),
+  with adjacent [controlled-fixture tests](../internal/ledger/closing_test.go)
+  and [real-storage account isolation](../tests/replay/closing_test.go).
+  Chronological fee comparison appends assessments, linked refunds, or renewed
+  adjustments under one account/day obligation. New closes and their fee effects
+  commit together; unchanged work makes no append. Rebuilt unpaid accruals remain
+  projections. Tests cover the E7/E9 numerical oracle, own-fee exclusion,
+  earlier-fee carry, repeated eligibility changes, zero/custom currency policies,
+  interest ties, and per-batch technical failures. Automatic submission-triggered
+  reconciliation remains P09; Day 6 finalization remains P10.
+- **Schedule boundary:** The caller supplies ordinary close days; the core has
+  no fixed Day 5 cutoff. Days 1–5 below identify canonical replay coverage.
+  [Alternate-schedule tests](../internal/ledger/closing_test.go) exercise ordinary
+  closes and fee corrections on Days 6 and 7.
 - **Scope:** In `internal/ledger`, implement explicit close/reconciliation for
   Days 1–5, using chronological closed-day processing. Exclude each day's own
   net fee only from eligibility; carry earlier net fees into later days. Compare

@@ -7,8 +7,9 @@ Configurable currencies, exact money values, checked arithmetic, daily interest
 rounding, conserving instalment allocation, append-only in-memory storage, and
 history-based balance/state projections, validated core initialization, and
 credit/debit submissions, authorization decisions, final settlement, linked debit
-reversals, and ordered instalment credits with duplicate rejection are implemented.
-Fee reconciliation, closing, and replay reporting are planned.
+reversals, ordered instalment credits with duplicate rejection, and explicit
+closing/fee reconciliation are implemented. Automatic reconciliation
+after financial submissions, Day 6 finalization, and replay reporting are planned.
 
 ## Requirements
 
