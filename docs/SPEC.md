@@ -67,9 +67,13 @@ Past authorization decisions remain unchanged during historical rebuilding.
 
 ## Monetary validation and errors
 
-Use exact monetary/rate arithmetic, never binary floating point. Store and
-format AED to two places and BHD to three. Reject nonzero digits beyond currency
-precision; accept redundant trailing zeros when the value is exactly representable.
+Use exact monetary/rate arithmetic, never binary floating point. Currency is a
+validated code/decimal-scale value; the core has no built-in currency list or
+code-specific switches. Codes contain three uppercase ASCII letters and scales
+range from zero through 18. Compatibility requires equal codes and scales.
+The application configures AED at two places and BHD at three. Reject nonzero
+digits beyond currency precision; accept redundant trailing zeros when the value
+is exactly representable.
 Preserve the original input when stored monetary values use the required scale.
 The exact validation condition is amount × 10^currency_scale being an integer.
 No tolerance or rounding may make an invalid principal amount pass validation.
@@ -89,8 +93,9 @@ replay is deterministic; resubmission to a populated repository rejects duplicat
 
 ## Fees
 
-The specified daily charge is AED 25.00 per account/assessed day. Reconcile
-closed days chronologically. For Days 1–5:
+Use each account currency's explicitly configured daily overdraft policy. The
+replay supplies AED 25.00 and explicitly no BHD fee. Reconcile closed days
+chronologically. For Days 1–5:
 
 1. Calculate the close including ordinary value-dated monetary entries and
    earlier days' net fees/refunds, excluding the assessed day's own fee/refund
@@ -111,14 +116,27 @@ An unchanged reconciliation appends nothing. Reversal identity derives from the
 original entry, refunds from assessment/correction cause, capitalization from
 account/window. Serialized identifiers are implementation details.
 
-### Missing BHD fee policy
+### Currency and policy configuration
 
-No BHD tariff or exchange rate is supplied. A negative BHD eligibility balance
-produces an undefined fee-policy error, no fee, a preserved balance, and continued
-processing. The tariff remains undefined, with no conversion or zero-fee policy.
-Day 6 uses the capitalization-inclusive eligibility rule
-below. Identify errors by account/assessed day/reconciliation cause; an unchanged
-repeated close adds no further occurrences.
+When implemented, cmd/replay supplies the concrete currencies, accounts, and
+overdraft policies to the core. Every account currency must have a policy before
+initialization succeeds; missing configuration rejects initialization before
+processing inputs or appending records. There is no implicit currency or fee
+default. Invalid currency descriptors, inconsistent scales for one code, negative
+charges, and charge-currency mismatches also reject initialization.
+
+A policy contains a nonnegative monetary charge in the same currency descriptor
+as its key/account. A present zero charge explicitly means no fee; an absent
+entry is an error. Negative balances under a no-fee policy retain their value
+and produce neither a fee entry nor an undefined-policy diagnostic. Initialization
+configuration is copied into core-owned state so callers cannot change policies
+during replay.
+
+The canonical composition uses AED at scale two with charge 25.00, and BHD at
+scale three with an explicit zero charge. BHD no-fee is an assumption replacing
+the earlier runtime undefined-policy proposal, since TASK supplies no BHD tariff
+or exchange rate. TASK remains unchanged. The canonical BHD balance never becomes
+negative, so this assumption preserves every supplied replay result.
 
 ## Interest and financial restoration
 
@@ -156,10 +174,11 @@ interest for Days 1–5, F the Day 6 fee, I its accrual, and K its capitalizatio
 
 - I = HALF_EVEN(max(B − F, 0) × daily rate, currency scale).
 - K = S + I.
-- For AED, F is the specified charge if B + K < 0, otherwise zero.
+- F is the configured currency charge if B + K < 0, otherwise zero.
 - Reported Day 6 close = B + K − F.
 
-For negative BHD eligibility use the missing-policy fallback. Consistency and
+An explicit no-fee policy makes F zero, including for negative BHD eligibility.
+Missing policies have already rejected initialization. Consistency and
 boundary calculations are in [NUMBERS.md](../NUMBERS.md#day-6-boundaries).
 
 ## Instalments
@@ -197,7 +216,9 @@ Normal verification must cover the behaviors above, source-field fidelity, and
 all numerical oracles/boundary cases in NUMBERS.md. Include fee self-eligibility,
 repeat correction/closing, preserved records/outcomes, full hold release, the
 approved-hold invariant even though Auth-B declines, error continuation, duplicate
-rejection, representability, instalment conservation, and interest reconciliation.
+rejection, configurable precision/currency compatibility, initialization rejection
+for missing policies, explicit no-fee behavior, instalment conservation, and
+interest reconciliation.
 
 The assignment still requires a real isolated failing test. Choose it during
 implementation, when it can expose a genuine design limitation; no assertion or
@@ -212,4 +233,4 @@ Preserve intact commit history without squashing.
 Extra workflows—authorizations with differing booking/value dates, explicit
 partial/over-captures, expiry/cancellation, and inactive-ID settlements—remain
 unspecified extensions outside this supplied scenario and remain deferred.
-The missing BHD tariff remains explicit with its operational handling resolved.
+The BHD no-fee assumption is explicit application configuration.

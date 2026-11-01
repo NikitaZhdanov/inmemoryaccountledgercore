@@ -75,12 +75,13 @@ with earlier net fees carried forward, specifically to prevent a fee sustaining
 itself after the underlying overdraft is corrected. See [fees](docs/SPEC.md#fees)
 and the associated chronological oracle in NUMBERS.md.
 
-The brief does not supply a BHD tariff or conversion rule. Alternatives were an
-undefined-policy error or a newly supplied currency-specific tariff. Use the
-error/no-charge fallback to preserve source fidelity and processing
-continuation. The tariff itself remains unspecified, not zero. Verify balance
-preservation, absence of conversion/charge, and continuation under the
-[missing-policy rule](docs/SPEC.md#missing-bhd-fee-policy).
+The brief supplies no BHD tariff or conversion rule. The application configuration
+now explicitly selects no overdraft fee for BHD. This is an assumption added to
+complete the configuration, not a tariff specified by TASK. It replaces the
+earlier proposed runtime undefined-policy diagnostic. No fee implementation had
+been built under that proposal. An absent policy is a configuration error during
+initialization; an explicit zero fee is a valid policy. See
+[currency and policy configuration](docs/SPEC.md#currency-and-policy-configuration).
 
 ## A6 — Interest rounding, representation, and finalization
 
@@ -168,8 +169,9 @@ assignment. Internal reconciliation idempotence is a separate property. The
 [validation/error rules](docs/SPEC.md#monetary-validation-and-errors) define the
 observable distinction and preserve original outcomes.
 
-Continuation for E6 follows from the full-stream requirement; the BHD fallback
-was explicitly selected. Covered rejections preserve diagnostics without effects
+Continuation for E6 follows from the full-stream requirement. BHD's explicit
+no-fee configuration is recorded in A5. Covered rejections preserve diagnostics
+without effects
 from the rejected operation. Unexpected implementation failures are not business
 rejections to suppress. Additional unexercised validation categories remain outside
 the selected policy.
@@ -225,3 +227,29 @@ Go 1.23.1 baseline and full checks on the automation toolchain, preserving all
 existing literal oracles and coverage.
 The existing vulnerability target now includes test files with `-test`, so the
 new test-only dependency is part of the scan.
+
+## A14 — Configured currency identity and initialization
+
+Represent currency as an immutable validated code/decimal-scale value rather
+than a built-in currency enumeration. Code syntax is exactly three uppercase
+ASCII letters; this is syntactic validation, not a registry lookup. Scale is an
+integer from zero through 18 inclusive, the largest exponent whose decimal unit
+factor fits signed int64. This technical precision limit also bounds formatting
+padding; it does not reduce the signed minor-unit amount range. Money operations
+require equal codes and scales. Separately constructed equal descriptors are
+compatible; matching codes with different scales are incompatible.
+
+Concrete currencies, accounts, and overdraft policies belong in cmd/replay's
+composition when implemented. The core contains no currency-code constants,
+currency-specific switches, default currencies, or default fee policies. Initialize
+with a policy for every account currency, rejecting absent entries, invalid
+descriptors, inconsistent scales for a code, negative charges, or charge-currency
+mismatches before processing or appending history. A configured zero monetary
+charge explicitly means no fee; a missing entry never means zero.
+
+The replay configuration will supply AED at scale two with a 25.00 charge, and
+BHD at scale three with an explicit zero charge under A5's assumption. Canonical
+inputs and numerical results are unchanged because the supplied BHD account
+never becomes negative. Currency primitives and compatibility are tested now.
+Account descriptor records follow in P03, initialization checks in P05, configured
+fee behavior in P08/P10, and application wiring in P12.

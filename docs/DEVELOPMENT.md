@@ -36,8 +36,8 @@ go vet ./...
 The focused command runs the money unit tests; `go test ./...` runs all
 implemented tests. Success prints `ok`; vet is silent on success. A failing
 assertion or check returns a nonzero exit status. The money tests use literal
-expected values for precision, trailing zeros, signed endpoints, currency
-isolation, and overflow, including intermediate accumulation.
+expected values for configurable precision, trailing zeros, signed endpoints,
+code/scale compatibility, and overflow, including intermediate accumulation.
 
 For the full local checks, using a current Go toolchain:
 

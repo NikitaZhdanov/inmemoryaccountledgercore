@@ -11,7 +11,7 @@ import (
 
 // Input representation errors are distinct from derived arithmetic overflow.
 var (
-	ErrInvalidCurrency    = errors.New("unsupported currency")
+	ErrInvalidCurrency    = errors.New("invalid currency")
 	ErrInvalidAmount      = errors.New("invalid fixed-point amount")
 	ErrPrecision          = errors.New("amount exceeds currency precision")
 	ErrAmountOutOfRange   = errors.New("input amount outside int64 minor-unit range")
@@ -19,28 +19,8 @@ var (
 	ErrArithmeticOverflow = errors.New("derived monetary arithmetic overflow")
 )
 
-// Currency identifies supported units; no implicit conversion is provided.
-type Currency string
-
-const (
-	AED Currency = "AED"
-	BHD Currency = "BHD"
-)
-
-// Scale is the number of fractional decimal places required by the currency.
-func (c Currency) Scale() (int, error) {
-	switch c {
-	case AED:
-		return 2, nil
-	case BHD:
-		return 3, nil
-	default:
-		return 0, fmt.Errorf("%w: %q", ErrInvalidCurrency, c)
-	}
-}
-
 // Money is an exact signed minor-unit value. Its fields are private so only
-// supported currencies can be constructed. The Go zero value is invalid.
+// validated currencies can be constructed. The Go zero value is invalid.
 type Money struct {
 	currency Currency
 	minor    int64
@@ -119,6 +99,9 @@ func (m Money) Format() (string, error) {
 		digits = strings.Repeat("0", scale+1-len(digits)) + digits
 	}
 	point := len(digits) - scale
+	if scale == 0 {
+		return sign + digits, nil
+	}
 	return sign + digits[:point] + "." + digits[point:], nil
 }
 
@@ -130,7 +113,8 @@ func (m Money) checkCurrency(other Money) error {
 		return err
 	}
 	if m.currency != other.currency {
-		return fmt.Errorf("%w: %s and %s", ErrCurrencyMismatch, m.currency, other.currency)
+		return fmt.Errorf("%w: %s(scale %d) and %s(scale %d)", ErrCurrencyMismatch,
+			m.currency.code, m.currency.scale, other.currency.code, other.currency.scale)
 	}
 	return nil
 }
