@@ -44,7 +44,7 @@ Update owning records alongside code and tests, as work happens:
 
 - Run checks appropriate to each change using [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and the [Makefile](Makefile). Use meaningful tests with expected values derived independently of the implementation; follow the coverage requirements in [docs/SPEC.md](docs/SPEC.md#verification-and-deferred-work) and [docs/USE_CASES.md](docs/USE_CASES.md).
 - For documentation-only changes, verify local links/anchors, source fidelity, consistency, and diffs. Verify that README quick-start commands and listed Make targets exist and match their descriptions.
-- Follow the [failing-test requirements](docs/SPEC.md#verification-and-deferred-work) and [isolated command guidance](docs/DEVELOPMENT.md#planned-replay-and-isolated-failing-test). Preserve the annotated failing assertion; run it separately from the normal suite and record its observed nonzero result.
+- Follow the [failing-test requirements](docs/SPEC.md#verification-and-deferred-work) and [isolated command guidance](docs/DEVELOPMENT.md#replay-and-isolated-failing-test). Preserve the annotated failing assertion; run it separately from the normal suite and record its observed nonzero result.
 - Record only checks actually run in WORKLOG; distinguish pending verification. Mark deliverables complete only when their contents and required checks are complete. Before calling the ledger complete, audit every TASK deliverable, review all criterion verdicts, run replay and normal tests, and run the intentional failing test separately. Report actual results and limitations.
 
 ## Commit history

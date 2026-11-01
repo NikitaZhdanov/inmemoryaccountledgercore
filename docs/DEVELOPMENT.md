@@ -35,13 +35,15 @@ go test ./internal/posting
 go test ./internal/ledger
 go test ./internal/repository/memory
 go test ./internal/scenario
+go test ./internal/report
+go test ./cmd/replay
 go test ./tests/replay
 go test ./...
 go vet ./...
 ```
 
 The focused commands run domain, policy, projection, posting, ledger, repository,
-and scenario unit tests plus real-component replay integration;
+scenario, report, and executable composition tests plus real-component replay integration;
 `go test ./...` runs all implemented tests.
 Success prints `ok`; vet is silent on success. A failing
 assertion or check returns a nonzero exit status. The money tests use literal
@@ -83,7 +85,12 @@ injected account/currency values and stopping on submission, correction, close,
 or finalization failures. Canonical replay tests invoke the runner against fresh
 real components and check explicit close positions, checkpoint/final numerical
 oracles, retained decisions and fee/refund links, deterministic fresh runs, and
-duplicate resubmission without financial or hold effects. Reporting remains planned.
+duplicate resubmission without financial or hold effects. Report tests use direct
+history fixtures for booking-day lifecycle, assessed-day fee grouping, precision,
+supplied ordering, read-only behavior, and errors without partial output. Replay
+integration compares the full table with a literal oracle and checks retained
+validation reasons. Executable tests check exact configuration, fresh-run
+determinism, output failures, and constructor rejection before replay/report.
 
 For the full local checks, using a current Go toolchain:
 
@@ -98,7 +105,7 @@ tests live with their calculations; projection tests use literal history; postin
 builder tests have no repository. Ledger workflow tests use a test-local
 repository double to verify commits, failures, and orchestration. Tests composing
 multiple real components belong in the `tests/replay` external test package, wiring fresh components through the same
-boundaries as the planned main rather than importing the executable. Currently,
+boundaries as main rather than importing the executable.
 `go test ./internal/...` runs unit tests and `go test ./tests/replay` runs integration
 tests; `go test ./...` includes both. Use table-driven tests with independent exact
 expectations from [NUMBERS](../NUMBERS.md) and coverage from
@@ -169,12 +176,44 @@ maintain those pins. Analyzer pins are updated explicitly in Makefile.
   standard library and test dependencies. Upgrade the toolchain or affected
   dependency indicated by the finding.
 
-## Planned replay and isolated failing test
+## Replay and isolated failing test
 
-The canonical runner is exercised by `go test ./tests/replay`, with unit tests
-under `go test ./internal/scenario`. The executable and report remain planned.
-Composition is in [DESIGN](DESIGN.md#packages-and-dependencies); the future report's
-observation checkpoint and output semantics are in [SPEC](SPEC.md#reporting-and-observations).
+Run the canonical stream in fresh in-memory storage:
+
+```sh
+go run ./cmd/replay
+```
+
+The executable initializes the two accounts and explicit currency policies,
+replays E1–E10 in supplied order, finalizes Day 6, and prints one table labeled
+restated after the entire stream and finalization. Each day lists ACC-001 then
+ACC-002, with two and three decimal places respectively. Repeated fresh runs
+produce identical output. Initialization or technical failures exit nonzero;
+recorded business rejections remain in the report and allow replay to continue.
+
+- **Closing ledger / daily interest:** Final value-dated balances and corrected,
+  individually rounded daily accruals. Day 6 balances include capitalization;
+  its interest excludes that credit. Daily interest is informational, already
+  paid by the final capitalization. Expected balances are in
+  [NUMBERS](../NUMBERS.md#expected-replay-results).
+- **Fee history:** Signed assessments, refunds, and adjustments grouped by the
+  assessed/value day. `key` identifies the entry, `obligation` links its account/day
+  assessment, `original` links a correction to its first assessment, and `cause`
+  identifies the triggering input or close. `booked` and `value` show both dates.
+  Days 2/4/5 retain charges booked Day 5 and refunds booked Day 6 despite final
+  net fees of zero.
+- **Recorded authorizations:** Lifecycle through each row's booking day. `ACTIVE`
+  means a recorded approval with the displayed hold; settled holds are released.
+  Auth-B stays declined on Days 5/6 even though the restated finances are positive.
+- **Errors/decision reasons:** Original event ID, recorded outcome, diagnostic
+  code, and reason on the observation day only: E6 on Day 4 and E8 on Day 5.
+  A dash denotes no applicable record. There is no original-snapshot table.
+
+The canonical runner and report are exercised by `go test ./tests/replay`, with
+unit tests under `go test ./internal/scenario` and `go test ./internal/report`;
+`go test ./cmd/replay` checks executable composition. Composition is in
+[DESIGN](DESIGN.md#packages-and-dependencies); report semantics are owned by
+[SPEC](SPEC.md#reporting-and-observations).
 
 The required failing design test remains pending selection under
 [A11](../AMBIGUITIES.md#a11--required-failing-test). Its planned isolated command is:

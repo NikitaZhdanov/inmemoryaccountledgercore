@@ -1,0 +1,16 @@
+Restated after the entire event stream E1–E10 and Day 6 finalization
+Finances are restated; authorization states and reasons are recorded decisions.
+
+Day | Account | Currency | Closing ledger | Daily interest | Fee history (assessed/value day) | Recorded authorizations | Errors/decision reasons
+1 | ACC-001 | AED | 250.00 | 0.10 | - | - | -
+1 | ACC-002 | BHD | 0.000 | 0.000 | - | - | -
+2 | ACC-001 | AED | 250.00 | 0.10 | FEE_ASSESSMENT -25.00 [key=fee/"ACC-001"/2/assessment; obligation=fee/"ACC-001"/2; booked=5; value=2; cause=attempt/7]; FEE_REFUND +25.00 [key=fee/"ACC-001"/2/cause/"attempt/9"; obligation=fee/"ACC-001"/2; booked=6; value=2; original=fee/"ACC-001"/2/assessment; cause=attempt/9] | Auth-A ACTIVE (hold 200.00) | -
+2 | ACC-002 | BHD | 0.000 | 0.000 | - | - | -
+3 | ACC-001 | AED | 650.00 | 0.26 | - | Auth-A ACTIVE (hold 200.00) | -
+3 | ACC-002 | BHD | 0.000 | 0.000 | - | - | -
+4 | ACC-001 | AED | 465.00 | 0.19 | FEE_ASSESSMENT -25.00 [key=fee/"ACC-001"/4/assessment; obligation=fee/"ACC-001"/4; booked=5; value=4; cause=attempt/7]; FEE_REFUND +25.00 [key=fee/"ACC-001"/4/cause/"attempt/9"; obligation=fee/"ACC-001"/4; booked=6; value=4; original=fee/"ACC-001"/4/assessment; cause=attempt/9] | Auth-A SETTLED | E6 REJECTED [UNKNOWN_AUTHORIZATION]: authorization ID is absent from the account history
+4 | ACC-002 | BHD | 0.000 | 0.000 | - | - | -
+5 | ACC-001 | AED | 465.00 | 0.19 | FEE_ASSESSMENT -25.00 [key=fee/"ACC-001"/5/assessment; obligation=fee/"ACC-001"/5; booked=5; value=5; cause=scenario/close/5]; FEE_REFUND +25.00 [key=fee/"ACC-001"/5/cause/"attempt/9"; obligation=fee/"ACC-001"/5; booked=6; value=5; original=fee/"ACC-001"/5/assessment; cause=attempt/9] | Auth-A SETTLED; Auth-B DECLINED | E8 DECLINED [INSUFFICIENT_AVAILABILITY]: hold would make available balance negative
+5 | ACC-002 | BHD | 10.000 | 0.004 | - | - | -
+6 | ACC-001 | AED | 466.03 | 0.19 | - | Auth-A SETTLED; Auth-B DECLINED | -
+6 | ACC-002 | BHD | 10.008 | 0.004 | - | - | -

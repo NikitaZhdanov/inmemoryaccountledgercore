@@ -182,6 +182,23 @@ The Day 6 close includes the single BHD 0.008 capitalization credit:
 0.004 + 0.004 from Days 5 and 6. The daily balances and accruals for both
 accounts are tabulated in [expected replay results](#expected-replay-results).
 
+### Report verification fixtures
+
+- Six supplied days × two accounts produce 12 rows, ordered by day then account.
+  Currency scales, opening amounts, and policies come from the constants above;
+  reducing the days/accounts or halving amounts would change the assigned replay.
+- Reordered Days 2/1 and accounts Y/X verify caller-supplied ordering. XYZ/4 at
+  one minor unit and ABC/0 at negative one minor unit verify precision without
+  built-in currencies; these are the smallest nonzero representable values.
+- A one-unit XYZ fee, refund, and renewed charge share assessed Day 1 while booked
+  Days 2/3/4. Net balance is zero from a one-unit opening. Authorization IDs Z/A
+  verify recorded order rather than alphabetical sorting; approval on Day 1 and
+  settlement on Day 2 distinguish lifecycle from the final state. Reused event E
+  has distinct declined/rejected attempts on Days 1/2 to verify diagnostic links.
+- Failure fixtures reuse MaxInt64 plus one unit, missing-account lookup, and an
+  unclosed Day 0; they require an error with no partial report. The integration
+  precision rejection uses the existing AED `1.005` fixture without financial effects.
+
 ### Projection boundary fixtures
 
 - One minor unit of opening money plus one future-value credit distinguishes
