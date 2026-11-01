@@ -34,14 +34,15 @@ go test ./internal/projection
 go test ./internal/posting
 go test ./internal/ledger
 go test ./internal/repository/memory
+go test ./internal/scenario
 go test ./tests/replay
 go test ./...
 go vet ./...
 ```
 
-The focused commands run domain, policy, projection, posting, ledger, and
-repository unit tests plus posting
-integration; `go test ./...` runs all implemented tests.
+The focused commands run domain, policy, projection, posting, ledger, repository,
+and scenario unit tests plus real-component replay integration;
+`go test ./...` runs all implemented tests.
 Success prints `ok`; vet is silent on success. A failing
 assertion or check returns a nonzero exit status. The money tests use literal
 expected values for configurable precision, trailing zeros, signed endpoints,
@@ -77,7 +78,12 @@ failing batch. Finalization tests cover exact rounded capitalization sums,
 capitalization-inclusive fee boundaries, zero/custom charges, same-day interest
 exclusion, repeat calls, and atomic append/overflow failures. The checkpoint
 integration also verifies the corrected six-day accruals and final balances.
-The scenario runner and report remain planned.
+Scenario unit tests independently compare every TASK source field and verify
+injected account/currency values and stopping on submission, correction, close,
+or finalization failures. Canonical replay tests invoke the runner against fresh
+real components and check explicit close positions, checkpoint/final numerical
+oracles, retained decisions and fee/refund links, deterministic fresh runs, and
+duplicate resubmission without financial or hold effects. Reporting remains planned.
 
 For the full local checks, using a current Go toolchain:
 
@@ -165,8 +171,9 @@ maintain those pins. Analyzer pins are updated explicitly in Makefile.
 
 ## Planned replay and isolated failing test
 
-The replay runner and end-to-end test package remain planned. Their intended
-composition is in [DESIGN](DESIGN.md#packages-and-dependencies), and the future report's
+The canonical runner is exercised by `go test ./tests/replay`, with unit tests
+under `go test ./internal/scenario`. The executable and report remain planned.
+Composition is in [DESIGN](DESIGN.md#packages-and-dependencies); the future report's
 observation checkpoint and output semantics are in [SPEC](SPEC.md#reporting-and-observations).
 
 The required failing design test remains pending selection under

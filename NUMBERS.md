@@ -123,8 +123,18 @@ P07 adds E7/E9 principal posting and E10 instalments. P08 generates the fee/refu
 and closed-day accrual results below through explicit closing/reconciliation with
 controlled principal fixtures; P09 verifies the same oracle through submissions
 with real storage and explicit close checkpoints. P10 extends that integration
-through finalization using the six-day oracle below.
-All balances below are AED.
+through finalization using the six-day oracle below. P11 invokes the reusable
+scenario runner and independently checks the same checkpoints and final values.
+
+The ten scenario inputs retain TASK's literal fields and stream positions 1–10.
+Ordinary closes for Days 1–5 follow E2/E3/E4/E6/E8; Day 6 finalizes after E10,
+as specified in [SPEC](docs/SPEC.md#history-and-replay). These dates and amounts
+are supplied requirements; reducing them would change the replay. Resubmission
+adds 10 × 3 = 30 attempt/outcome/diagnostic records without financial or hold
+changes. Descriptor-injection fixtures use XYZ/4 and ABC/18 to distinguish
+configured values from canonical currency defaults; neither sets a core policy.
+
+### ACC-001 checkpoints (AED)
 
 | Observation | Value day | Fee-free balance | Posted balance |
 | --- | ---: | ---: | ---: |
@@ -153,8 +163,24 @@ decline remains after E9, without a hold.
 
 AED daily accruals for Days 1–5 after E7/Day 5 close are 0.10, 0.00, 0.00,
 0.00, 0.00. The Day 3 base 5.00 gives unrounded 0.002, hence 0.00.
-E9 restores 0.10, 0.10, 0.26, 0.19, 0.19. Late E10 changes BHD Day 5
-from 0.000 to 0.004 without changing AED. Final values appear below.
+E9 restores 0.10, 0.10, 0.26, 0.19, 0.19. E10 leaves AED unchanged.
+
+### ACC-002 checkpoints (BHD)
+
+E10 is processed after E9 while retaining booking/value Day 5. Its three
+instalments total BHD 10.000 and replace the already-closed Day 5 accrual.
+No fees or holds affect this account in the supplied replay.
+
+| Observation | Value day | Posted balance (BHD) | Daily accrual (BHD) |
+| --- | ---: | ---: | ---: |
+| Before E10, including after E9 | 1–5 | 0.000 | 0.000 |
+| After E10 and historical reconciliation | 1–4 | 0.000 | 0.000 |
+| After E10 and historical reconciliation | 5 | 10.000 | 0.004 |
+| Day 6 finalization | 6 | 10.008 | 0.004 |
+
+The Day 6 close includes the single BHD 0.008 capitalization credit:
+0.004 + 0.004 from Days 5 and 6. The daily balances and accruals for both
+accounts are tabulated in [expected replay results](#expected-replay-results).
 
 ### Projection boundary fixtures
 

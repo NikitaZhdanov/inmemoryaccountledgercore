@@ -6,7 +6,7 @@ append-only storage, P04 history projections, and P05 configuration/ordinary
 submissions, P06 authorization/final settlement, and P07 linked principal reversal
 and instalment posting, P08 explicit closing/fee reconciliation, and P09 automatic
 historical reconciliation after financial submissions, and P10 Day 6 finalization
-are implemented. The scenario runner and report remain planned.
+and P11 canonical scenario execution are implemented. The report remains planned.
 
 [TASK.md](TASK.md) preserves the original assignment and canonical input stream.
 This file defines behavior; [AMBIGUITIES.md](../AMBIGUITIES.md) records decision
@@ -247,9 +247,8 @@ failure, isolate it from the passing normal suite, document its exact command,
 and record its observed nonzero result. Money and calculation unit tests exist
 under P01–P02, repository unit tests under P03, and direct history-projection
 tests under P04. P05 adds configuration/submission unit tests and real-component
-ordinary-posting integration; full replay and the required failing test remain
-pending. P06 adds authorization/final-settlement tests, E1–E6 integration, and
-direct-fixture coverage of Auth-B's decline and retained decision after financial
+ordinary-posting integration. P06 adds authorization/final-settlement tests,
+E1–E6 integration, and direct-fixture coverage of Auth-B's decline after financial
 restoration. P07 adds linked principal-reversal and instalment-posting unit tests
 and real-component integration. P08 adds explicit chronological closing, fee
 refunds/renewed adjustments, and accrual-restoration tests with controlled
@@ -259,6 +258,10 @@ fees and accruals, and tests partial progress on technical failures.
 P10 adds atomic finalization tests for capitalization/fee boundaries, exact
 rounded sums, same-day interest exclusion, idempotence, and technical failures;
 checkpoint integration now verifies final balances after all corrections.
+P11 adds source-field fidelity and complete scenario-runner integration with
+explicit close positions, checkpoint/final oracles, deterministic fresh runs,
+duplicate resubmission, and technical-failure propagation. Reporting and the
+required failing design test remain pending.
 README links to [DEVELOPMENT](DEVELOPMENT.md) for runtime/dependency details and test commands;
 add replay instructions when built.
 Preserve intact commit history without squashing.

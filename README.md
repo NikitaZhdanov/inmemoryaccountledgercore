@@ -9,8 +9,9 @@ history-based balance/state projections, validated core initialization, and
 credit/debit submissions, authorization decisions, final settlement, linked debit
 reversals, ordered instalment credits with duplicate rejection, and explicit
 closing/fee reconciliation with automatic historical corrections after financial
-submissions, and capitalization-aware finalization are implemented. The scenario
-runner and replay reporting are planned.
+submissions, capitalization-aware finalization, and the canonical scenario runner
+are implemented and covered by full replay tests. Executable replay reporting
+remains planned.
 
 The core coordinates focused `posting`, `projection`, and `interest` packages;
 see the [package map](docs/DESIGN.md#packages-and-dependencies).
