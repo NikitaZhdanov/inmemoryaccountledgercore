@@ -30,17 +30,21 @@ go mod download
 ```sh
 go test ./internal/domain
 go test ./internal/ledger
+go test ./internal/repository/memory
 go test ./...
 go vet ./...
 ```
 
-The focused commands run money and pure calculation unit tests;
+The focused commands run money, pure calculation, and repository unit tests;
 `go test ./...` runs all implemented tests. Success prints `ok`; vet is silent on success. A failing
 assertion or check returns a nonzero exit status. The money tests use literal
 expected values for configurable precision, trailing zeros, signed endpoints,
 code/scale compatibility, and overflow, including intermediate accumulation.
 Calculation tests cover HALF_EVEN ties, maximum-base interest, and exact
 instalment conservation using the [numerical inventory](../NUMBERS.md).
+Repository tests cover ordered snapshots, detached containers and payloads,
+atomic key/envelope validation, and retained attempts sharing an event ID.
+They do not execute the later duplicate-input or other ledger policies.
 
 For the full local checks, using a current Go toolchain:
 
