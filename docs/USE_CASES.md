@@ -1,7 +1,7 @@
 # Ledger use cases
 
-Status: verification scenarios; full scenario replay tests exist, with report
-verification still planned. Business expectations come from [SPEC](SPEC.md);
+Status: verification scenarios; full scenario replay and report tests exist.
+Business expectations come from [SPEC](SPEC.md);
 technical checks follow the
 [DESIGN](DESIGN.md). This catalog maps specified behavior to verification scenarios.
 [TASK](TASK.md) remains the canonical input. Scenario IDs are labels, not new
@@ -127,6 +127,9 @@ genuinely failing design test; see [design-test candidates](#design-test-candida
 
 ### H08 — Produce the deterministic final report
 
+- **Coverage:** [Canonical report integration](../tests/replay/report_test.go),
+  [report unit tests](../internal/report/report_test.go), and
+  [composition tests](../cmd/replay/main_test.go).
 - **Preconditions:** H07 complete in a fresh repository.
 - **Action:** Generate the report; repeat the whole replay in another fresh repository.
 - **Expected outcome:** Identical output, one final restated table for every day

@@ -3,15 +3,11 @@
 An in-memory ledger for value-dated account balances, authorizations, fees, and
 daily interest, using exact monetary arithmetic.
 
-Configurable currencies, exact money values, checked arithmetic, daily interest
-rounding, conserving instalment allocation, append-only in-memory storage, and
-history-based balance/state projections, validated core initialization, and
-credit/debit submissions, authorization decisions, final settlement, linked debit
-reversals, ordered instalment credits with duplicate rejection, and explicit
-closing/fee reconciliation with automatic historical corrections after financial
-submissions, capitalization-aware finalization, and the canonical scenario runner
-are implemented and covered by full replay tests. Executable replay reporting
-remains planned.
+The canonical replay and deterministic daily report are implemented, including
+authorization decisions, settlement, backdated corrections, linked fee refunds,
+instalments, and interest capitalization. Normal tests cover the full replay.
+The required isolated failing design test and final deliverable audit remain
+planned in the [implementation plan](docs/IMPLEMENTATION_PLAN.md).
 
 The core coordinates focused `posting`, `projection`, and `interest` packages;
 see the [package map](docs/DESIGN.md#packages-and-dependencies).
@@ -27,10 +23,13 @@ for full-check requirements.
 From the repository root:
 
 ```sh
+go run ./cmd/replay
 go test ./...
 go vet ./...
 ```
 
+Replay prints the final restated daily table; see
+[output interpretation](docs/DEVELOPMENT.md#replay-and-isolated-failing-test).
 Tests print `ok` on success; vet is silent when it finds no issues.
 
 ## Main Make targets

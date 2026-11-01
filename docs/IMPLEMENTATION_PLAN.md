@@ -1,13 +1,9 @@
 # Implementation plan
 
-Status: P01–P11 implemented for their specified workflows; P12–P14 remain planned.
-Money, calculation, repository, projection, configuration, posting, authorization,
-settlement, reversal, instalment, and explicit closing/reconciliation tests exist,
-including automatic historical reconciliation, Day 6 finalization, and
-real-component checkpoint integration, and the canonical scenario runner;
-the report and required failing design test remain pending. The package split
-under [A16](../AMBIGUITIES.md#a16--ledger-package-boundaries) changes ownership
-without advancing those remaining tasks.
+Status: P01–P12 implemented for their specified workflows; P13–P14 remain planned.
+The canonical scenario, deterministic final report, and executable replay are
+implemented with unit and real-component integration tests. The required failing
+design test and final deliverable audit remain pending.
 
 [TASK](TASK.md) preserves the assignment; [SPEC](SPEC.md) defines agreed behavior;
 [DESIGN](DESIGN.md) defines its Go architecture; [USE_CASES](USE_CASES.md)
@@ -315,7 +311,7 @@ compose real components independently of the scenario runner.
   close share one validated batch per account/window. Tests cover exact AED/BHD
   totals, fee boundaries, zero/custom charges, own-fee refunds, same-day interest
   exclusion, repeat calls, and append/arithmetic failures without partial writes.
-  P11 adds the reusable runner; executable reporting remains P12.
+  P11 provides the reusable runner; P12 provides executable reporting.
 - **Scope:** In `internal/ledger`, implement the SPEC Day 6 equations after
   historical corrections. Determine fee, rounded accrual, and exact capitalization
   before posting; include capitalization in fee eligibility and exclude it from its own interest
@@ -340,7 +336,7 @@ compose real components independently of the scenario runner.
   numerical oracles, original decisions, linked fee/refund history, deterministic
   fresh runs, duplicate resubmission, and stopping on technical failures.
   Accounts/descriptors and the initialized core are injected; scenario constructs
-  no repository, policy, or report. Executable reporting remains P12.
+  no repository, policy, or report. P12 provides executable reporting.
 - **Scope:** Add `internal/scenario` with literal domain inputs and explicit
   close checkpoints; its runner receives an already constructed ledger core.
   Put scenario unit tests beside the package and complete replay tests in
@@ -363,6 +359,14 @@ compose real components independently of the scenario runner.
 
 ### P12 — Deterministic report and executable replay
 
+- **Status:** Implemented in [report](../internal/report/report.go) and
+  [executable composition](../cmd/replay/main.go), with adjacent unit/composition
+  tests and [report integration](../tests/replay/report_test.go) against a literal
+  full-table oracle. Tests cover every day/account, exact precision, linked fee
+  history, recorded lifecycle/reason placement, fresh-run determinism, read-only
+  reporting, and constructor rejection before replay/output. Replay and output
+  interpretation are documented in README and DEVELOPMENT. The required failing
+  design test and final audit remain P13–P14.
 - **Scope:** Add pure projection/formatting in `internal/report`, with unit tests
   beside the package. In `cmd/replay/main.go`, construct a fresh memory repository,
   inject it into ledger, invoke scenario with that core, pass detached history

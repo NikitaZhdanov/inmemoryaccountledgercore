@@ -10,7 +10,7 @@ belong to [DEVELOPMENT](DEVELOPMENT.md).
 ## Packages and dependencies
 
 Production code uses the Go standard library. The table lists allowed imports
-within this module. Report and executable composition remain planned.
+within this module.
 The split follows [A16](../AMBIGUITIES.md#a16--ledger-package-boundaries).
 
 | Package | Responsibility | Allowed internal imports |
@@ -21,9 +21,9 @@ The split follows [A16](../AMBIGUITIES.md#a16--ledger-package-boundaries).
 | `internal/posting` | Pure input validation/decisions and batch construction, including authorizations, settlements, reversals, and instalment allocation. | `domain`, `projection` |
 | `internal/ledger` | Validated configuration, submission commits, chronological closing/reconciliation, and the consumer-owned repository interface. | `domain`, `posting`, `projection` |
 | `internal/repository/memory` | Append-only storage, detached history, record-key validation, atomic batches. | `domain` |
-| `internal/report` (planned) | Pure report projection and formatting from detached history and read-only projections. | `domain`, `projection` |
+| `internal/report` | Pure report projection and formatting from detached history and read-only projections. | `domain`, `projection` |
 | `internal/scenario` | Canonical inputs and explicit close sequencing against an injected core. | `domain`, `ledger` |
-| `cmd/replay` (planned) | Construct storage/configuration/core, run scenario, and supply finalized history/projections to report. | `domain`, `ledger`, `projection`, `repository/memory`, `report`, `scenario` |
+| `cmd/replay` | Construct storage/configuration/core, run scenario, and supply finalized history/projections to report. | `domain`, `ledger`, `projection`, `repository/memory`, `report`, `scenario` |
 
 Imports point toward `domain`; the graph is acyclic. Ledger owns all workflow
 commits and does not import its storage adapter. Posting, projection, and interest
@@ -281,8 +281,12 @@ The caller finishes historical corrections and prior closes before this terminal
 checkpoint; post-capitalization correction/recovery is outside this workflow.
 
 After finalization, main supplies detached history and read-only history
-projections to report. Report reconstructs recorded authorization lifecycle and
-formats rows in supplied day/account order under
+projections to report. The pure report formatter reads balances and accruals from
+that projection, scans the same history for authorization transitions through each
+booking day, groups fee records by assessed/value day, and selects diagnostics
+only on their observation day. Ordered scans preserve record order within cells;
+lookup maps are never iterated for output. It returns a complete string or an
+error before main writes output. Rows follow supplied day/account order under
 [reporting and observations](SPEC.md#reporting-and-observations).
 
 ## Technical limitations
@@ -303,4 +307,4 @@ Verification coverage and limitation investigations belong to
 [NUMBERS](../NUMBERS.md). The required failing-test contract is in
 [SPEC](SPEC.md#verification-and-deferred-work), its selection decision in
 [A11](../AMBIGUITIES.md#a11--required-failing-test), and commands in
-[DEVELOPMENT](DEVELOPMENT.md#planned-replay-and-isolated-failing-test).
+[DEVELOPMENT](DEVELOPMENT.md#replay-and-isolated-failing-test).

@@ -6,7 +6,7 @@ append-only storage, P04 history projections, and P05 configuration/ordinary
 submissions, P06 authorization/final settlement, and P07 linked principal reversal
 and instalment posting, P08 explicit closing/fee reconciliation, and P09 automatic
 historical reconciliation after financial submissions, and P10 Day 6 finalization
-and P11 canonical scenario execution are implemented. The report remains planned.
+and P11 canonical scenario execution and P12 executable reporting are implemented.
 
 [TASK.md](TASK.md) preserves the original assignment and canonical input stream.
 This file defines behavior; [AMBIGUITIES.md](../AMBIGUITIES.md) records decision
@@ -138,7 +138,7 @@ account/window. Serialized identifiers are implementation details.
 
 ### Currency and policy configuration
 
-The planned cmd/replay supplies the concrete currencies, accounts, and
+The cmd/replay executable supplies the concrete currencies, accounts, and
 overdraft policies to the core. Every account currency must have a policy before
 initialization succeeds; missing configuration rejects initialization before
 processing inputs or appending records. There is no implicit currency or fee
@@ -260,10 +260,11 @@ rounded sums, same-day interest exclusion, idempotence, and technical failures;
 checkpoint integration now verifies final balances after all corrections.
 P11 adds source-field fidelity and complete scenario-runner integration with
 explicit close positions, checkpoint/final oracles, deterministic fresh runs,
-duplicate resubmission, and technical-failure propagation. Reporting and the
-required failing design test remain pending.
-README links to [DEVELOPMENT](DEVELOPMENT.md) for runtime/dependency details and test commands;
-add replay instructions when built.
+duplicate resubmission, and technical-failure propagation. P12 adds pure report
+formatting, executable configuration/composition, and literal full-table replay
+assertions for precision, fees, recorded lifecycle, and reason placement. The
+required failing design test remains pending. README links to
+[DEVELOPMENT](DEVELOPMENT.md) for runtime/dependency details, replay, and test commands.
 Preserve intact commit history without squashing.
 
 Extra workflows—authorizations with differing booking/value dates, explicit
