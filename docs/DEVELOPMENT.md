@@ -68,7 +68,12 @@ currency isolation. Closing tests cover explicit Days 1–5 fee reconciliation,
 linked refunds/renewed adjustments, replaced unpaid accruals, policy/currency
 isolation, and append/arithmetic failures, including an interruption between
 committed days. Real-storage integration also checks independent account/day
-obligations. Automatic submission reconciliation and full replay remain planned.
+obligations. Backdating integration submits E1–E10 with explicit Days 1–5 closes
+and checks financial restoration, Auth-B's retained decline, late BHD accrual,
+and duplicate/correction idempotence before capitalization. Ledger tests inject
+append failures at the input and successive fee batches and arithmetic failure
+during automatic reconciliation, verifying retained commits and no partial
+failing batch. Day 6 finalization and full replay remain planned.
 
 For the full local checks, using a current Go toolchain:
 

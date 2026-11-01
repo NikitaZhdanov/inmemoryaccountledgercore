@@ -24,8 +24,14 @@ accrual oracle using controlled principal fixtures, H09's configured policies,
 X03's unpaid rounded interest, X05's own-fee exclusion and earlier-fee carry,
 X06's repeated closing/correction, X07's renewed eligibility, and X09's corrected
 unpaid accruals. [Real-storage tests](../tests/replay/closing_test.go) check account
-isolation and idempotent fee/refund records. Automatic submission integration
-remains P09; Day 6 and capitalization portions remain P10/P11.
+isolation and idempotent fee/refund records. P09
+[checkpoint integration](../tests/replay/backdating_test.go) covers H04–H06,
+U02/U04, and X01/X05/X06/X09/X11 through automatic financial submissions with
+explicit closes, before capitalization. Its
+[workflow failure tests](../internal/ledger/backdating_test.go) cover U07's
+committed-input and committed-earlier-day boundaries, including duplicate
+rejection while reconciliation is incomplete. Day 6 and capitalization portions
+remain P10/P11.
 
 Each scenario is independent unless its preconditions name a replay checkpoint.
 Validation fixtures supplement, rather than modify, E1–E10. Expected rejection,

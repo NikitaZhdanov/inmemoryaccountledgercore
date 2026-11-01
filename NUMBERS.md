@@ -121,7 +121,8 @@ P04 history fixtures record principal, fee, and correction effects directly.
 P05 additionally posts E1/E2/E4 through the core; P06 integration submits E1–E6.
 P07 adds E7/E9 principal posting and E10 instalments. P08 generates the fee/refund
 and closed-day accrual results below through explicit closing/reconciliation with
-controlled principal fixtures; automatic submission integration remains P09.
+controlled principal fixtures; P09 verifies the same oracle through submissions
+with real storage and explicit close checkpoints, before capitalization.
 All balances below are AED.
 
 | Observation | Value day | Fee-free balance | Posted balance |
@@ -219,10 +220,11 @@ from 0.000 to 0.004 without changing AED. Final values appear below.
   A separate active AED 50.00 hold remains reserved in the multiple-hold fixture,
   giving AED 415.00 available. E6's AED 180.00 request changes neither balance.
   A fresh AED 0.01 credit after E6 gives AED 465.01, testing continuation.
-- The Auth-B correction fixture uses AED 465.00 − 620.00 − 25.00 − 25.00 =
-  −205.00 before the open Day 5's fee. Its AED 90.00 request would give
+- The Auth-B correction fixture and P09 integration use
+  AED 465.00 − 620.00 − 25.00 − 25.00 = −205.00 before the open Day 5's fee.
+  Its AED 90.00 request would give
   −295.00; restoring principal and both fees returns AED 465.00 while retaining
-  the decline. Fee generation and Day 5 closing remain later integration work.
+  the decline. P09 generates the fees before E8 and closes Day 5 afterward.
 - Proposed availability `MinInt64 − 1` fails before append. Separately,
   `25,000 + MinInt64 − 24,999 = MinInt64 + 1` at a future value date fits;
   reserving two minor units at the earlier AED 250.00 checkpoint would underflow
@@ -288,6 +290,17 @@ from 0.000 to 0.004 without changing AED. Final values appear below.
   opening −1 plus a later-value debit of MinInt64 + 1 equals MinInt64 before
   fees; an earlier 2,500-unit fee would underflow that later close. Both fail
   before appending the fee or close checkpoint.
+- Submission interruption fixtures close Days 1–3 at zero, then debit AED 0.01
+  value-dated Day 2. Required Days 2/3 fees yield −25.01 and −50.01; Day 1
+  stays zero. Failure at append positions one/two/three isolates the input,
+  first fee, and second fee batches. A committed input contributes three records;
+  each successful fee adds one. Duplicate attempts add only three rejection
+  records even while fees remain outstanding.
+- Automatic fee-overflow fixtures debit MaxInt64 units, or
+  `−(MinInt64 + 2,500)` = 9,223,372,036,854,773,308 units. The former fits as
+  principal but cannot absorb its first fee. The latter reaches MinInt64 after
+  its first 2,500-unit fee; its second fee underflows. The input and any first
+  fee remain committed; the overflowing fee appends nothing.
 
 ## Expected replay results
 

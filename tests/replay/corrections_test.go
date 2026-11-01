@@ -13,8 +13,8 @@ import (
 	"inmemoryaccountledgercore/internal/repository/memory"
 )
 
-// This posting-layer integration omits E8 and all closes. Fee reconciliation and
-// full replay remain P08/P09/P11; amounts and dates are literal TASK fixtures.
+// This posting integration omits E8 and all closes. Backdating integration
+// covers closed-day corrections separately; amounts/dates are TASK fixtures.
 func TestLinkedReversalAndLateInstalments(t *testing.T) {
 	aed, err := domain.NewCurrency("AED", 2)
 	require.NoError(t, err)
