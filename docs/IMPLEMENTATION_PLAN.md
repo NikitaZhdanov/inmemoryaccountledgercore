@@ -1,10 +1,11 @@
 # Implementation plan
 
-Status: P01–P13 implemented for their specified scopes; P14 remains planned.
-The canonical scenario, deterministic final report, and executable replay are
-implemented with unit and real-component integration tests. The isolated failing
-design test exposes the absence of whole-submission financial atomicity; the final
-deliverable audit remains pending.
+Status: P01–P14 complete for the agreed scope. The canonical scenario,
+deterministic final report, and executable replay have unit and real-component
+integration coverage. The isolated failing design test exposes the absence of
+whole-submission financial atomicity; it remains intentionally failing. 
+Deferred scope and technical limitations
+remain explicit in SPEC and DESIGN.
 
 [TASK](TASK.md) preserves the assignment; [SPEC](SPEC.md) defines agreed behavior;
 [DESIGN](DESIGN.md) defines its Go architecture; [USE_CASES](USE_CASES.md)
@@ -40,8 +41,7 @@ checks. Completion checks below define requirements; actual outcomes belong in
 [WORKLOG](../WORKLOG.md).
 
 Use the [DEVELOPMENT assertion convention](DEVELOPMENT.md#assertion-convention)
-for unit tests; the dependency choice is recorded in
-[A13](../AMBIGUITIES.md#a13--testify-unit-test-assertions).
+for unit tests.
 
 Follow DESIGN's [package/import map](DESIGN.md#packages-and-dependencies) and
 [repository contract](DESIGN.md#repository-boundary) as packages are introduced.
@@ -58,8 +58,8 @@ compose real components independently of the scenario runner.
   with adjacent [unit tests](../internal/domain/money_test.go). Go 1.23.1 module
   baseline; standard library for production and Testify for unit tests.
   Currency descriptors are now validated code/scale values; concrete currencies
-  are test fixtures or later application composition, not core constants.
-  Submission diagnostics and raw-input retention remain in their later tasks.
+  are test fixtures or application composition, not core constants.
+  Submission diagnostics and raw-input retention are implemented under P03/P05.
 - **Scope:** Create the module and `internal/domain` package using the standard
   library for production and Testify for unit tests; record the actual Go toolchain
   and module baseline. Add currency
@@ -85,7 +85,7 @@ compose real components independently of the scenario runner.
   adjacent [interest](../internal/interest/interest_test.go) and
   [allocation tests](../internal/posting/allocation_test.go), using shared
   [domain rounding](../internal/domain/rounding.go). Posting, accrual state,
-  and capitalization remain in their scheduled tasks.
+  and capitalization are implemented under P07/P08/P10.
 - **Scope:** Add pure interest and posting-allocation functions using domain
   money operations. Add positive-base daily interest calculation using the exact
   rate denominator and quotient/remainder HALF_EVEN rounding. Add the integer
@@ -107,8 +107,8 @@ compose real components independently of the scenario runner.
   [repository tests](../internal/repository/memory/repository_test.go). Storage
   checks envelope shape and global record keys, preserves order, and detaches
   containers and payloads on write/read. Duplicate-input decisions, configuration
-  validation, and projection rebuilding remain in their scheduled tasks; U04,
-  U07, and X11 have storage-level coverage only.
+  validation, and projection rebuilding are implemented under P04/P05; P03
+  supplies storage-level coverage for U04, U07, and X11.
 - **Scope:** Define account, original input, attempt/outcome, monetary entry,
   authorization transition, diagnostic, batch, and history records in
   `internal/domain`. Define the small `History()` / `Append(batch)` interface in
@@ -136,7 +136,7 @@ compose real components independently of the scenario runner.
   recorded authorization state/holds, signed fee nets, closed days, and derived
   daily/unpaid accruals are covered. Rebuilds own their history and preserve
   original decisions. Submission/append integration and chronological fee
-  reconciliation remain in P05–P09; these tests do not execute the replay.
+  reconciliation are implemented under P05–P09; P04 tests use direct history.
 - **Scope:** In `internal/projection`, add checked value-date balance queries over
   detached history and disposable projections for authorization lifecycle/active
   holds, fee net effects, unpaid daily accruals, and closed-day tracking. Support
@@ -161,8 +161,8 @@ compose real components independently of the scenario runner.
   diagnostics atomically; duplicate checks precede dispatch and validation.
   Proposed-history checks catch derived overflow before append, including at
   later value dates. Amount signs follow [A10](../AMBIGUITIES.md#a10--ordinary-input-amount-signs).
-  Authorization and settlement follow in P06; reversal, instalments, and
-  reconciliation are covered by P07–P09.
+  Authorization and settlement are implemented under P06; reversal, instalments, and
+  reconciliation are implemented under P07–P09.
 - **Scope:** In `internal/posting`, prepare credit/debit batches for ledger commits,
   exact monetary validation, original input retention, unique attempt identities,
   outcomes, and diagnostics. Reject every reused event ID before any
@@ -224,7 +224,7 @@ compose real components independently of the scenario runner.
   debit record business rejections. E10 posts all three ordered BHD credits in one
   batch. Tests cover retained source fields, currency isolation, exact totals,
   and technical-failure atomicity. P08 covers fee refunds and closed-day accrual
-  restoration with controlled fixtures; P09 adds full E7/E8/E9 checkpoint integration.
+  restoration with controlled fixtures; P09 supplies full E7/E8/E9 checkpoint integration.
 - **Scope:** In `internal/posting`, add E9's principal reversal linked to E7,
   retaining the original record and using booking Day 6/value Day 2. Add E10's
   ordered instalment entries with its original Day 5 dates. Separate
@@ -248,8 +248,8 @@ compose real components independently of the scenario runner.
   commit together; unchanged work makes no append. Rebuilt unpaid accruals remain
   projections. Tests cover the E7/E9 numerical oracle, own-fee exclusion,
   earlier-fee carry, repeated eligibility changes, zero/custom currency policies,
-  interest ties, and per-batch technical failures. P09 adds automatic
-  submission-triggered reconciliation; Day 6 finalization remains P10.
+  interest ties, and per-batch technical failures. P09 supplies automatic
+  submission-triggered reconciliation; P10 supplies Day 6 finalization.
 - **Schedule boundary:** The caller supplies ordinary close days; the core has
   no fixed Day 5 cutoff. Days 1–5 below identify canonical replay coverage.
   [Alternate-schedule tests](../internal/ledger/closing_test.go) exercise ordinary
@@ -282,7 +282,8 @@ compose real components independently of the scenario runner.
   closing open days. Tests cover E7/E8/E9 timing, linked fee/refund dates,
   preserved outcomes, corrected AED/BHD accruals, repeated internal work,
   duplicate rejection without correction effects, and append/arithmetic failures
-  after committed input or earlier fee batches. Day 6 capitalization remains P10.
+  after committed input or earlier fee batches. Day 6 capitalization is implemented
+  under P10.
 - **Scope:** In `internal/ledger`, connect financial submissions to affected
   closed-day reconciliation and explicit close calls. Reconcile E7's Days 2–4
   before returning control for E8; close Day 5 only after E8. Process E9's
@@ -312,7 +313,7 @@ compose real components independently of the scenario runner.
   close share one validated batch per account/window. Tests cover exact AED/BHD
   totals, fee boundaries, zero/custom charges, own-fee refunds, same-day interest
   exclusion, repeat calls, and append/arithmetic failures without partial writes.
-  P11 provides the reusable runner; P12 provides executable reporting.
+  P11 supplies the reusable runner; P12 supplies executable reporting.
 - **Scope:** In `internal/ledger`, implement the SPEC Day 6 equations after
   historical corrections. Determine fee, rounded accrual, and exact capitalization
   before posting; include capitalization in fee eligibility and exclude it from its own interest
@@ -337,7 +338,7 @@ compose real components independently of the scenario runner.
   numerical oracles, original decisions, linked fee/refund history, deterministic
   fresh runs, duplicate resubmission, and stopping on technical failures.
   Accounts/descriptors and the initialized core are injected; scenario constructs
-  no repository, policy, or report. P12 provides executable reporting.
+  no repository, policy, or report. P12 supplies executable reporting.
 - **Scope:** Add `internal/scenario` with literal domain inputs and explicit
   close checkpoints; its runner receives an already constructed ledger core.
   Put scenario unit tests beside the package and complete replay tests in
@@ -367,7 +368,7 @@ compose real components independently of the scenario runner.
   history, recorded lifecycle/reason placement, fresh-run determinism, read-only
   reporting, and constructor rejection before replay/output. Replay and output
   interpretation are documented in README and DEVELOPMENT. The required failing
-  design test and final audit remain P13–P14.
+  design test and final audit are completed under P13–P14.
 - **Scope:** Add pure projection/formatting in `internal/report`, with unit tests
   beside the package. In `cmd/replay/main.go`, construct a fresh memory repository,
   inject it into ledger, invoke scenario with that core, pass detached history
@@ -429,6 +430,31 @@ compose real components independently of the scenario runner.
   must distinguish a design limitation from an unspecified business requirement.
 
 ### P14 — Final documentation, coverage, and deliverable audit
+
+- **Status:** Complete. Reconciled documentation with implementation/history,
+  restored removed decision and numerical records, repaired local references,
+  and mapped all 28 scenarios to actual tests in
+  [USE_CASES](USE_CASES.md#coverage-review-and-scope-boundary). TASK and the
+  annotated design assertion are unchanged. Observed checks and compiler versions
+  are recorded in [WORKLOG](../WORKLOG.md).
+
+| TASK deliverable | Audited evidence |
+| --- | --- |
+| In-memory core, no web/persistence/UI/database | [Package graph](DESIGN.md#packages-and-dependencies), [memory adapter](../internal/repository/memory/repository.go), standard-library-only production dependencies |
+| Ordered six-day replay and per-day output | [Source-field tests](../internal/scenario/scenario_test.go), [checkpoint/final assertions](../tests/replay/scenario_test.go), [literal report oracle](../tests/replay/testdata/canonical_report.txt), executable replay |
+| Intact history without squashing | All existing milestone commits retained; no history changes in P14 |
+| README run/output guidance | [Quick start](../README.md#quick-start), [DEVELOPMENT commands and interpretation](DEVELOPMENT.md#replay-and-isolated-failing-test), existing Make targets |
+| Every chosen constant and rationale | [NUMBERS](../NUMBERS.md): source values, exact formulas/bounds, rounding/allocation, test fixtures, tool/configuration parameters, and halving explanations |
+| Ambiguities and resolutions | [AMBIGUITIES](../AMBIGUITIES.md): task interpretations, explicit clarifications, and links to deferred scope |
+| All eight criteria and abandoned implementations | [REJECTED](../REJECTED.md): refuse 2/7/8; qualify 1/6 and conditional 5; accept 3/4; replacements checked against commits and recorded investigations |
+| One annotated genuinely failing design test | [Tagged probe](../tests/replay/designlimitation_test.go): isolated full command exits 1 at expected 0 versus actual −2,501 minor units; normal recovery tests pass |
+| Timestamped real worklog | [WORKLOG](../WORKLOG.md): historical timestamps/outcomes preserved; historical claims reviewed against available records; P14 reports fresh observed checks separately |
+
+The audit found documentation drift without a missing supplied-scenario behavior.
+Per-batch atomicity, intermediate int64 bounds, sequential in-memory execution,
+and deferred authorization extensions remain the documented limitations. Hosted
+CI execution is not claimed; local checks and earlier CI-equivalent runs are
+identified in WORKLOG.
 
 - **Scope:** Reconcile README, NUMBERS, AMBIGUITIES, REJECTED, WORKLOG, and the
   specification/design/use-case/plan statuses with the delivered implementation.
