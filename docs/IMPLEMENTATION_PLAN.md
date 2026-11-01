@@ -41,23 +41,12 @@ independent results; preserve exact, type-sensitive money expectations. This
 supersedes the original standard-library-only test dependency choice without
 adding production dependencies; see [A13](../AMBIGUITIES.md#a13--testify-unit-test-assertions).
 
-Follow the [package/import map](DESIGN.md#small-code-layout): `internal/domain`
-owns shared models and money; `internal/ledger` owns business logic and the small
-repository interface; `internal/repository/memory` owns storage; `internal/report`
-owns presentation; `internal/scenario` owns canonical inputs and close sequencing.
-`cmd/replay/main.go` composes them. Ledger and memory depend on domain; report and
-scenario may use ledger and domain. No reverse imports or report/scenario coupling
-are needed. Keep repository signatures in shared domain types so memory need not
-import ledger. Preserve `History()` / `Append(batch)` as the entire repository
-boundary, with no storage-specific queries added to support reporting.
+Follow DESIGN's [package/import map](DESIGN.md#packages-and-dependencies) and
+[repository contract](DESIGN.md#repository-boundary) as packages are introduced.
 
-Place unit tests beside each package, using a test-local repository double for
-ledger unit tests. Put tests using multiple real components in the separate
-`tests/replay` external test package, even before the scenario runner exists.
-They compose components through the same boundaries as `main`. Once present,
-run unit tests with `go test ./internal/...` and end-to-end tests with
-`go test ./tests/replay`; `go test ./...` includes both. Review import direction
-as packages are introduced and verify the eventual graph with `go list -deps ./...`.
+Follow [DEVELOPMENT test organization](DEVELOPMENT.md#test-organization) for test
+placement, component wiring, and package-specific commands. Integration tests can
+compose real components before the scenario runner exists.
 
 ## Ordered tasks
 

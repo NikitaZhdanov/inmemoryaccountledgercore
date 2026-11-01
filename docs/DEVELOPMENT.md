@@ -45,6 +45,18 @@ For the full local checks, using a current Go toolchain:
 make ci
 ```
 
+## Test organization
+
+Place unit tests beside each package in `*_test.go`; ledger unit tests can use a
+test-local repository double. Tests composing multiple real components belong in
+the `tests/replay` external test package, wiring fresh components through the same
+boundaries as main rather than importing the executable. Once those packages exist,
+`go test ./internal/...` runs unit tests and `go test ./tests/replay` runs integration
+tests; `go test ./...` includes both. Use table-driven tests with independent exact
+expectations from [NUMBERS](../NUMBERS.md) and coverage from
+[USE_CASES](USE_CASES.md). Review import direction as packages are introduced;
+`go list -deps ./...` must match the [package map](DESIGN.md#packages-and-dependencies).
+
 ## Make targets and analyzers
 
 The [Makefile](../Makefile) is the command source of truth.
@@ -97,7 +109,7 @@ maintain those pins. Analyzer pins are updated explicitly in Makefile.
 ## Planned replay and isolated failing test
 
 The replay runner and end-to-end test package remain planned. Their intended
-composition is in [DESIGN](DESIGN.md#small-code-layout), and the future report's
+composition is in [DESIGN](DESIGN.md#packages-and-dependencies), and the future report's
 observation checkpoint and output semantics are in [SPEC](SPEC.md#reporting-and-observations).
 
 The required failing design test remains pending selection under
@@ -111,5 +123,9 @@ No tagged failing test exists yet. Once added, it must execute the annotated
 assertion and exit nonzero for the documented limitation. Normal Make/CI targets
 keep that build tag disabled.
 
-Money API details are in [DESIGN](DESIGN.md#money-api) and the
-[domain package](../internal/domain/money.go).
+Place the selected test beside the affected package for a local limitation or in
+`tests/replay` for a cross-component limitation. Selection and completion conditions
+are in [P13](IMPLEMENTATION_PLAN.md#p13--investigate-and-preserve-a-genuine-failing-design-test).
+
+Currency and money API details are in the [currency](../internal/domain/currency.go)
+and [money](../internal/domain/money.go) code.

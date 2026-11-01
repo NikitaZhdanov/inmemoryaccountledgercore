@@ -37,7 +37,8 @@ Tests print `ok` on success; vet is silent when it finds no issues.
 ## Documentation
 
 - **Development:** [Setup, tooling, and CI](docs/DEVELOPMENT.md),
-  [Design and money API](docs/DESIGN.md), [Implementation plan](docs/IMPLEMENTATION_PLAN.md),
+  [Architecture](docs/DESIGN.md), [Money API](internal/domain/money.go),
+  [Implementation plan](docs/IMPLEMENTATION_PLAN.md),
   [Repository guidelines](AGENTS.md).
 - **Behavior:** [Assignment](docs/TASK.md), [Specification](docs/SPEC.md),
   [Use cases](docs/USE_CASES.md).

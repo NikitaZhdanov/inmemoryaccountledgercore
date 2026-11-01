@@ -2,7 +2,7 @@
 
 This file owns numerical sources, justifications, calculations, and verification
 parameters. [SPEC](docs/SPEC.md) defines behavior; [AMBIGUITIES](AMBIGUITIES.md)
-explains business choices. The [Go design](docs/DESIGN.md#language-and-tooling)
+explains business choices. The [Go design](docs/DESIGN.md#money-representation)
 uses checked `int64` minor units with the representation bounds below.
 P01 uses Go module `inmemoryaccountledgercore`, baseline Go 1.23.1, observed
 toolchain `go1.23.1 darwin/amd64`, and standard-library-only production code.
