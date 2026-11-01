@@ -115,6 +115,58 @@ Additional allocation oracles apply at both currency scales:
 
 ---
 
+## Checkpoint calculations
+
+P04 history fixtures record principal, fee, and correction effects directly;
+processing them from inputs remains later work. All balances below are AED.
+
+| Observation | Value day | Fee-free balance | Posted balance |
+| --- | ---: | ---: | ---: |
+| E1/E2 | 1 | 1,200.00 − 950.00 = 250.00 | 250.00 |
+| E4 | 3 | 250.00 + 400.00 = 650.00 | 650.00 |
+| E5 | 4 | 650.00 − 185.00 = 465.00 | 465.00 |
+| E7 through Day 5 close | 2 | 250.00 − 620.00 = −370.00 | −370.00 − 25.00 = −395.00 |
+| E7 through Day 5 close | 3 | 650.00 − 620.00 = 30.00 | 30.00 − 25.00 = 5.00 |
+| E7 through Day 5 close | 4 | 465.00 − 620.00 = −155.00 | −155.00 − 50.00 = −205.00 |
+| E7 through Day 5 close | 5 | −155.00 | −155.00 − 75.00 = −230.00 |
+| E9 and linked refunds | 2 | 250.00 | 250.00 |
+| E9 and linked refunds | 5 | 465.00 | 465.00 |
+
+Fee obligations for Days 2, 4, and 5 each have signed net −25.00 before E9;
+each linked +25.00 refund restores its net to zero. A renewed −25.00 adjustment
+under the same obligation restores net −25.00. Own-day fee exclusion removes
+every assessment/refund/adjustment for that day, retaining earlier fees: Day 4
+eligibility is −180.00; Day 5 eligibility before its fee is −205.00. Excluding
+all fees gives −155.00 on both days.
+
+Auth-A's 200.00 hold leaves availability 250.00 − 200.00 = 50.00 at Day 2
+and 650.00 − 200.00 = 450.00 at Day 3. Settlement releases the entire hold;
+ledger and availability both become 465.00. At E8, before Day 5's fee,
+availability is −205.00; the requested 90.00 would give −295.00. Its recorded
+decline remains after E9, without a hold.
+
+AED daily accruals for Days 1–5 after E7/Day 5 close are 0.10, 0.00, 0.00,
+0.00, 0.00. The Day 3 base 5.00 gives unrounded 0.002, hence 0.00.
+E9 restores 0.10, 0.10, 0.26, 0.19, 0.19. Late E10 changes BHD Day 5
+from 0.000 to 0.004 without changing AED. Final values appear below.
+
+### Projection boundary fixtures
+
+- One minor unit of opening money plus one future-value credit distinguishes
+  opening balance from value-date inclusion. Two active holds of one unit each
+  exactly exhaust the two-unit balance. These are minimal nonzero arithmetic
+  fixtures, not additional business amounts.
+- A separate AED base 37.49 yields rounded daily interest 0.01. Capitalizing
+  two days' total 0.02 on the second day gives posted balance 37.51, while
+  that day's interest remains 0.01. On the following day, 37.51 yields 0.02.
+  These values straddle the 37.50 tie to expose same-day capitalization leakage.
+- Balance accumulation `MaxInt64 + 1 − 1` fails at the intermediate sum even
+  though its mathematical total fits. Fee net `MinInt64 − 1`, active holds
+  `MaxInt64 + 1`, and availability `MinInt64 − 1` also fail explicitly. One
+  minor unit is the smallest representable boundary crossing.
+- An observation prefix counts records: zero is empty and full length includes
+  all records. Prefixes −1 and length + 1 reject as the nearest invalid bounds.
+
 ## Expected replay results
 
 | Day | ACC-001 Closing Ledger (AED) | ACC-001 Daily Interest | ACC-002 Closing Ledger (BHD) | ACC-002 Daily Interest |
