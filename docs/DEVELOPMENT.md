@@ -215,20 +215,37 @@ unit tests under `go test ./internal/scenario` and `go test ./internal/report`;
 [DESIGN](DESIGN.md#packages-and-dependencies); report semantics are owned by
 [SPEC](SPEC.md#reporting-and-observations).
 
-The required failing design test remains pending selection under
-[A11](../AMBIGUITIES.md#a11--required-failing-test). Its planned isolated command is:
+Run the required failing design test separately:
 
 ```sh
-go test -tags designlimitation ./...
+go test -tags designlimitation ./tests/replay/...
 ```
 
-No tagged failing test exists yet. Once added, it must execute the annotated
-assertion and exit nonzero for the documented limitation. Normal Make/CI targets
-keep that build tag disabled.
+The tagged [integration test](../tests/replay/designlimitation_test.go),
+`TestDesignLimitationFailedSubmissionIsFinanciallyAtomic`, exits nonzero
+at its annotated equality assertion: expected zero minor units, actual −2,501.
+It interrupts the Day 3 fee append after a backdated debit and Day 2 fee commit.
+The test deliberately fails at the post-failure assertion to expose the single-call
+submission atomicity boundary. It submits once and queries immediately after the
+technical error, before recovery, testing whether the prior financial balance is
+unchanged. The normal
+[interruption regressions](../internal/ledger/backdating_test.go) separately verify
+that explicit reconciliation completes the missing work idempotently. The probe
+does not require financial effects from duplicate inputs or introduce a business
+policy. The atomicity boundary, trade-off, and recovery rule are owned by
+[DESIGN](DESIGN.md#repository-boundary), with fixture derivations in
+[NUMBERS](../NUMBERS.md#interrupted-reconciliation-probe).
 
-Place the selected test beside the affected package for a local limitation or in
-`tests/replay` for a cross-component limitation. Selection and completion conditions
-are in [P13](IMPLEMENTATION_PLAN.md#p13--investigate-and-preserve-a-genuine-failing-design-test).
+To run only that probe:
+
+```sh
+go test -tags designlimitation ./tests/replay -run '^TestDesignLimitationFailedSubmissionIsFinanciallyAtomic$' -count=1
+```
+
+The expected nonzero result must include that assertion failure; a compilation,
+dependency, or cache-access error does not demonstrate the limitation. Normal
+Make/CI targets omit the `designlimitation` tag and keep the passing regression
+suite separate.
 
 Currency and money API details are in the [currency](../internal/domain/currency.go)
 and [money](../internal/domain/money.go) code.

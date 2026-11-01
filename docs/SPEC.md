@@ -262,8 +262,11 @@ P11 adds source-field fidelity and complete scenario-runner integration with
 explicit close positions, checkpoint/final oracles, deterministic fresh runs,
 duplicate resubmission, and technical-failure propagation. P12 adds pure report
 formatting, executable configuration/composition, and literal full-table replay
-assertions for precision, fees, recorded lifecycle, and reason placement. The
-required failing design test remains pending. README links to
+assertions for precision, fees, recorded lifecycle, and reason placement.
+P13's tagged integration test exposes the absence of whole-submission financial
+atomicity on technical failure, as described in the
+[repository boundary](DESIGN.md#repository-boundary). Its stronger atomicity
+expectation is a design probe outside the behavior promised above. README links to
 [DEVELOPMENT](DEVELOPMENT.md) for runtime/dependency details, replay, and test commands.
 Preserve intact commit history without squashing.
 

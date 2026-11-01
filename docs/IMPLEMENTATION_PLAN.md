@@ -1,9 +1,10 @@
 # Implementation plan
 
-Status: P01–P12 implemented for their specified workflows; P13–P14 remain planned.
+Status: P01–P13 implemented for their specified scopes; P14 remains planned.
 The canonical scenario, deterministic final report, and executable replay are
-implemented with unit and real-component integration tests. The required failing
-design test and final deliverable audit remain pending.
+implemented with unit and real-component integration tests. The isolated failing
+design test exposes the absence of whole-submission financial atomicity; the final
+deliverable audit remains pending.
 
 [TASK](TASK.md) preserves the assignment; [SPEC](SPEC.md) defines agreed behavior;
 [DESIGN](DESIGN.md) defines its Go architecture; [USE_CASES](USE_CASES.md)
@@ -397,12 +398,20 @@ compose real components independently of the scenario runner.
 
 ### P13 — Investigate and preserve a genuine failing design test
 
+- **Status:** Implemented in the tagged
+  [integration probe](../tests/replay/designlimitation_test.go), exposing the
+  [repository atomicity boundary](DESIGN.md#repository-boundary). A transient
+  failure between fee batches leaves the input and first fee committed. The
+  annotated financial atomicity assertion executes and fails under the isolated
+  command; normal interruption regressions verify idempotent explicit recovery.
+  Normal tests pass. Observed checks are recorded in [WORKLOG](../WORKLOG.md).
 - **Scope:** Examine the implemented design for an evidenced limitation, using
   the [USE_CASES candidates](USE_CASES.md#design-test-candidates) as investigation
-  leads only. Select a useful property, explain the actual trade-off and evidence
-  in AMBIGUITIES A11, and add a real test with an inline explanation under the
-  `designlimitation` build tag beside the affected package, or in `tests/replay`
-  if it exposes a cross-component limitation. Document its exact isolated command
+  leads only. Select a useful property, document the architectural trade-off in
+  DESIGN and verification evidence in USE_CASES, and add a real test with an
+  inline explanation under the `designlimitation` build tag beside the affected
+  package, or in `tests/replay` if it exposes a cross-component limitation.
+  Document its exact isolated command
   and why it satisfies the assignment. Record any superseded investigation and
   its outcome.
 - **Dependencies:** P11, P12; actual implementation evidence is required.
