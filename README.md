@@ -1,18 +1,12 @@
 # In-Memory Account Ledger Core
 
-An in-memory ledger for value-dated account balances, authorizations, fees, and
-daily interest, using exact monetary arithmetic.
+A Go ledger core with append-only history and exact monetary arithmetic. It
+handles value-dated balances, authorization holds, settlements, backdated
+corrections, overdraft fees, instalments, and daily interest.
 
-The canonical replay and deterministic daily report are implemented, including
-authorization decisions, settlement, backdated corrections, linked fee refunds,
-instalments, and interest capitalization. Normal tests cover the full replay.
-An isolated failing design test documents the submission's atomicity boundary; see
-[its command and interpretation](docs/DEVELOPMENT.md#replay-and-isolated-failing-test).
-The [final deliverable audit](docs/IMPLEMENTATION_PLAN.md#p14--final-documentation-coverage-and-deliverable-audit)
-is complete for the supplied scope, with limitations recorded in the architecture.
-
-The core coordinates focused `posting`, `projection`, and `interest` packages;
-see the [package map](docs/DESIGN.md#packages-and-dependencies).
+The supplied six-day AED/BHD replay, daily report, and normal regression suite
+are implemented; see [delivery status](docs/IMPLEMENTATION_PLAN.md). Storage is
+in memory only. No web layer, database, services, or configuration are needed.
 
 ## Requirements
 
@@ -30,9 +24,29 @@ go test ./...
 go vet ./...
 ```
 
-Replay prints the final restated daily table; see
-[output interpretation](docs/DEVELOPMENT.md#replay-and-isolated-failing-test).
+Replay prints one row per day and account: closing ledger balance, daily
+interest, fee history, recorded authorization states, and errors/decision reasons.
+Balances and interest reflect all backdated corrections; Day 6 balances include
+capitalized interest. Fee charges and refunds remain visible, and past
+authorization decisions stay unchanged. Business rejections appear in the report;
+technical failures exit nonzero. See the [output guide](docs/DEVELOPMENT.md#replay-and-isolated-failing-test)
+and [expected balances](NUMBERS.md#expected-replay-results).
 Tests print `ok` on success; vet is silent when it finds no issues.
+
+## Intentional failing test
+
+Run separately from the normal suite:
+
+```sh
+go test -tags designlimitation ./tests/replay/...
+```
+
+This must fail at the annotated balance assertion: expected AED 0.00, actual
+AED −25.01. It exposes a limitation: a submission interrupted during fee
+reconciliation can leave committed financial changes. Commits are atomic per
+batch; recovery requires explicit reconciliation. See the
+[test and recovery explanation](docs/DEVELOPMENT.md#replay-and-isolated-failing-test).
+Normal tests and Make/CI targets exclude this probe.
 
 ## Main Make targets
 
